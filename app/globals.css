@@ -1,0 +1,281 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Accent */
+  --color-accent: #E8360A;
+  --color-accent-hover: #FF4A1C;
+  --color-accent-muted: rgba(232, 54, 10, 0.15);
+  --color-gold: #C9922A;
+  --color-gold-muted: rgba(201, 146, 42, 0.1);
+
+  /* Neutral */
+  --gray-950: #0C0806;
+  --gray-900: #140D0B;
+  --gray-850: #1D1410;
+  --gray-800: #281C16;
+  --gray-700: #3D2B22;
+  --gray-600: #543D32;
+  --gray-400: #8C6B5A;
+  --gray-200: #C9B3A8;
+  --gray-50: #F2EBE6;
+
+  /* Semantic */
+  --color-success: #22C55E;
+  --color-success-muted: rgba(34, 197, 94, 0.1);
+  --color-error: #E8360A;
+  --color-error-muted: rgba(232, 54, 10, 0.15);
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+
+  /* Board */
+  --board-light: #E8C89A;
+  --board-dark: #A0714A;
+  --board-highlight: rgba(246, 246, 105, 0.7);
+  --board-hint: rgba(34, 197, 94, 0.4);
+  --board-error: rgba(232, 54, 10, 0.4);
+
+  /* Typography */
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Epilogue', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.6875rem;
+  --text-2xl: 2.25rem;
+  --text-3xl: 3.25rem;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 900;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-24: 96px;
+
+  /* Radius */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-2xl: 24px;
+  --r-full: 9999px;
+
+  /* shadcn semantic aliases */
+  --background: var(--gray-900);
+  --foreground: var(--gray-50);
+  --card: var(--gray-850);
+  --card-foreground: var(--gray-50);
+  --popover: var(--gray-850);
+  --popover-foreground: var(--gray-50);
+  --primary: var(--color-accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--gray-800);
+  --secondary-foreground: var(--gray-50);
+  --muted: var(--gray-800);
+  --muted-foreground: var(--gray-400);
+  --accent: var(--gray-800);
+  --accent-foreground: var(--gray-50);
+  --destructive: var(--color-error);
+  --destructive-foreground: #ffffff;
+  --error: var(--color-error);
+  --error-foreground: #ffffff;
+  --success: var(--color-success);
+  --success-foreground: #ffffff;
+  --border: var(--gray-700);
+  --input: var(--gray-700);
+  --ring: var(--color-accent);
+  --chart-1: var(--color-accent);
+  --chart-2: var(--color-gold);
+  --chart-3: var(--color-info);
+  --chart-4: var(--color-warning);
+  --chart-5: var(--color-success);
+  --radius: var(--r-lg);
+  --sidebar: var(--gray-900);
+  --sidebar-foreground: var(--gray-50);
+  --sidebar-primary: var(--color-accent);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--gray-800);
+  --sidebar-accent-foreground: var(--gray-50);
+  --sidebar-border: var(--gray-700);
+  --sidebar-ring: var(--color-accent);
+}
+
+.light {
+  --color-accent: #EA580C;
+  --color-accent-hover: #C2410C;
+  --color-accent-muted: rgba(234, 88, 12, 0.12);
+  --color-gold: #A07520;
+  --color-gold-muted: rgba(160, 117, 32, 0.12);
+
+  --gray-950: #FDFBF7;
+  --gray-900: #F5EBD7;
+  --gray-850: #EBDDC8;
+  --gray-800: #DBC4A8;
+  --gray-700: #B89B7A;
+  --gray-600: #8F7558;
+  --gray-400: #5C4A35;
+  --gray-200: #3A2E1E;
+  --gray-50: #1A100B;
+
+  --background: var(--gray-950);
+  --foreground: var(--gray-50);
+  --card: var(--gray-900);
+  --card-foreground: var(--gray-50);
+  --popover: var(--gray-900);
+  --popover-foreground: var(--gray-50);
+  --secondary: var(--gray-850);
+  --secondary-foreground: var(--gray-50);
+  --muted: var(--gray-900);
+  --muted-foreground: var(--gray-400);
+  --accent: var(--gray-850);
+  --accent-foreground: var(--gray-50);
+  --border: var(--gray-700);
+  --input: var(--gray-700);
+  --sidebar: var(--gray-900);
+  --sidebar-foreground: var(--gray-50);
+  --sidebar-accent: var(--gray-850);
+  --sidebar-accent-foreground: var(--gray-50);
+  --sidebar-border: var(--gray-700);
+}
+
+/* Chessboard notation styles */
+[data-testid="chessboard"] text {
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.cg-wrap coords {
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+/* For react-chessboard specifically if it uses custom classes or nested elements */
+[id^="preview-"] text,
+[id^="preview-"] .notation,
+#main-board text,
+#main-board .notation {
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-muted: var(--color-accent-muted);
+  --color-gold: var(--color-gold);
+  --color-gold-muted: var(--color-gold-muted);
+  --color-success-muted: var(--color-success-muted);
+  --color-error-muted: var(--color-error-muted);
+  --color-warning: var(--color-warning);
+  --color-info: var(--color-info);
+  --color-gray-950: var(--gray-950);
+  --color-gray-900: var(--gray-900);
+  --color-gray-850: var(--gray-850);
+  --color-gray-800: var(--gray-800);
+  --color-gray-700: var(--gray-700);
+  --color-gray-600: var(--gray-600);
+  --color-gray-400: var(--gray-400);
+  --color-gray-200: var(--gray-200);
+  --color-gray-50: var(--gray-50);
+  --color-board-light: var(--board-light);
+  --color-board-dark: var(--board-dark);
+  --color-board-highlight: var(--board-highlight);
+  --color-board-hint: var(--board-hint);
+  --color-board-error: var(--board-error);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-heading: var(--font-sans);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.screen-in {
+  animation: screen-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
