@@ -7,6 +7,7 @@ import { parsePgn, type Opening, type Collection, OPENINGS_LIMIT, COLLECTIONS_LI
 import { CHESS_THEMES, type ChessTheme } from "@/lib/themes"
 import { ThemeSelectorDialog } from "./theme-selector-dialog"
 import { AddToCollectionDialog } from "./add-to-collection-dialog"
+import { SelectCollectionDialog } from "./select-collection-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AddOpeningForm } from "./add-opening-form"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -93,6 +94,7 @@ export function HomeScreen({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isCollectionMode, setIsCollectionMode] = useState(false)
   const [collectionDialogOpen, setCollectionDialogOpen] = useState(false)
+  const [selectCollectionDialogOpen, setSelectCollectionDialogOpen] = useState(false)
   const [newCollectionName, setNewCollectionName] = useState("")
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [themeDialogOpen, setThemeDialogOpen] = useState(false)
@@ -105,6 +107,25 @@ export function HomeScreen({
       else next.add(id)
       return next
     })
+  }
+
+  const handleLongPress = (opening: Opening) => {
+    // Enter delete mode and select this opening
+    setIsDeleteMode(true)
+    setIsCollectionMode(false)
+    setSelectedIds(new Set([opening.id]))
+  }
+
+  const handleAddToExistingCollection = async (collectionId: string) => {
+    const collection = collections.find(c => c.id === collectionId)
+    if (!collection) return
+
+    const newOpeningIds = [...new Set([...collection.openingIds, ...Array.from(selectedIds)])]
+    await onUpdateCollection(collectionId, { openingIds: newOpeningIds })
+    
+    setSelectedIds(new Set())
+    setIsDeleteMode(false)
+    setSelectCollectionDialogOpen(false)
   }
   const handleConfirmAdd = async (newOpeningIds: string[]) => {
     if (!activeCollectionId) return
@@ -853,6 +874,7 @@ const ThemeIcon = currentTheme.icon
                   onToggleSelect={toggleSelect}
                   theme={currentTheme}
                   isSaving={isSaving}
+                  onLongPress={handleLongPress}
                 />
               ))}
             </div>
@@ -952,14 +974,26 @@ const ThemeIcon = currentTheme.icon
                   {editingCollectionId ? "Обновить коллекцию" : "Создать коллекцию"}
                 </button>
               ) : (
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={isSaving}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-error px-6 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-lg shadow-error/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Удалить ({selectedIds.size})
-                </button>
+                <div className="flex items-center gap-2">
+                  {!activeCollectionId && (
+                    <button
+                      onClick={() => setSelectCollectionDialogOpen(true)}
+                      disabled={isSaving}
+                      className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FolderPlus className="h-4 w-4" />
+                      Добавить в коллекцию
+                    </button>
+                  )}
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={isSaving}
+                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-error px-6 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-lg shadow-error/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Удалить ({selectedIds.size})
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1084,6 +1118,16 @@ const ThemeIcon = currentTheme.icon
         onOpenChange={setThemeDialogOpen}
         currentTheme={currentTheme}
         onSelect={onThemeChange}
+      />
+
+      {/* Select Collection Dialog */}
+      <SelectCollectionDialog
+        open={selectCollectionDialogOpen}
+        onOpenChange={setSelectCollectionDialogOpen}
+        collections={collections}
+        selectedOpeningIds={selectedIds}
+        onConfirm={handleAddToExistingCollection}
+        isSaving={isSaving}
       />
       {/* Добавить в коллекцию */}
       {activeCollectionId && (

@@ -17,6 +17,7 @@ import type { Opening, SessionUnit, ParsedPgn } from "@/lib/openings"
 import { parsePgn } from "@/lib/openings"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
+import { chessSounds } from "@/lib/sounds"
 
 type Props = {
   session: SessionUnit[]
@@ -301,6 +302,7 @@ function handleContinue() {
                 try {
                   chessRef.current.move(systemSan, { strict: false })
                   setFen(chessRef.current.fen())
+                  chessSounds.playMoveSound()
 
                   // Check for threefold repetition
                   if (chessRef.current.isThreefoldRepetition()) {
@@ -390,6 +392,7 @@ function handleContinue() {
         return false
       }
       setFen(chess.fen())
+      chessSounds.playMoveSound()
       const nextIdx = currentIdx + 1
       updateMoveIdx(nextIdx)
 
@@ -414,6 +417,7 @@ function handleContinue() {
           try {
             chess.move(systemSan, { strict: false })
             setFen(chess.fen())
+            chessSounds.playMoveSound()
 
             // Check for threefold repetition
             if (chess.isThreefoldRepetition()) {
@@ -474,6 +478,7 @@ function handleContinue() {
     try {
       chess.move({ from, to, promotion: piece })
       setFen(chess.fen())
+      chessSounds.playMoveSound()
 
       // Check for threefold repetition
       if (chess.isThreefoldRepetition()) {
@@ -506,6 +511,7 @@ function handleContinue() {
           try {
             chess.move(systemSan, { strict: false })
             setFen(chess.fen())
+            chessSounds.playMoveSound()
             const afterIdx = idx + 1
             updateMoveIdx(afterIdx)
             if (afterIdx >= p.moves.length) handlePhaseComplete()

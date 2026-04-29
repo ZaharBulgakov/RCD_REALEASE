@@ -3,7 +3,7 @@
 import { Pencil, Trash2, LayoutGrid, Grid3X3, Check } from "lucide-react"
 import type { Opening } from "@/lib/openings"
 import { parsePgn } from "@/lib/openings"
-import { useMemo } from "react"
+import { useMemo, useRef, useState } from "react"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
 import { getStyles } from "@/lib/styles"
@@ -19,6 +19,7 @@ type Props = {
   onToggleSelect?: (id: string) => void
   theme: ChessTheme
   isSaving?: boolean
+  onLongPress?: (opening: Opening) => void
 }
 
 export function OpeningCard({
@@ -31,8 +32,12 @@ export function OpeningCard({
   onToggleSelect,
   theme,
   isSaving,
+  onLongPress,
 }: Props) {
-  const s = getStyles(theme)
+  const [isLongPressing, setIsLongPressing] = useState(false)
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const longPressThreshold = 500 // 500ms for long press
+    const s = getStyles(theme)
   const parsed = useMemo(() => parsePgn(opening.pgn), [opening.pgn])
   const updatedLabel = useMemo(() => {
     const d = new Date(opening.createdAt)
@@ -51,15 +56,98 @@ export function OpeningCard({
 
 
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (isSaving || isDeleteMode) return
+    
+    // Start long press timer
+    longPressTimerRef.current = setTimeout(() => {
+      setIsLongPressing(true)
+      if (onLongPress) {
+        onLongPress(opening)
+      }
+      // Provide haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50)
+      }
+    }, longPressThreshold)
+  }
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    // Clear long press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    
+    // If it wasn't a long press, handle normal click
+    if (!isLongPressing && !isDeleteMode && onToggleSelect) {
+      onStudy(opening)
+    }
+    
+    setIsLongPressing(false)
+  }
+
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    // Clear long press timer when mouse leaves
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    setIsLongPressing(false)
+    
+    // Update styles
+    const target = e.currentTarget as HTMLElement
+    Object.assign(target.style, isSelected ? s.cardSelected : s.card)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isSaving || isDeleteMode) return
+    
+    // Start long press timer for touch devices
+    longPressTimerRef.current = setTimeout(() => {
+      setIsLongPressing(true)
+      if (onLongPress) {
+        onLongPress(opening)
+      }
+      // Provide haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50)
+      }
+    }, longPressThreshold)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Clear long press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    
+    // If it wasn't a long press, handle normal click
+    if (!isLongPressing && !isDeleteMode && onToggleSelect) {
+      onStudy(opening)
+    }
+    
+    setIsLongPressing(false)
+  }
+
+  const handleTouchCancel = () => {
+    // Clear long press timer when touch is cancelled
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    setIsLongPressing(false)
+  }
+
   const handleClick = (e: React.MouseEvent) => {
     if (isSaving) return
     if (isDeleteMode && onToggleSelect) {
       e.preventDefault()
       e.stopPropagation()
       onToggleSelect(opening.id)
-    } else {
-      onStudy(opening)
     }
+    // Normal click is handled in mouseUp/touchEnd to avoid conflict with long press
   }
 
   return (
@@ -79,11 +167,12 @@ export function OpeningCard({
         }
       }}
       style={isSelected ? s.cardSelected : s.card}
-onMouseEnter={(e) => Object.assign(e.currentTarget.style, s.cardHover)}
-onMouseLeave={(e) => Object.assign(e.currentTarget.style, isSelected ? s.cardSelected : s.card)}
+      onMouseEnter={(e) => Object.assign(e.currentTarget.style, s.cardHover)}
+      onMouseLeave={(e) => Object.assign(e.currentTarget.style, isSelected ? s.cardSelected : s.card)}
       className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-transparent bg-card transition-all duration-300
         ${isSaving ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}
         ${isSelected ? "-translate-y-0.5" : "hover:-translate-y-0.5"}
+        ${isLongPressing ? "scale-95 opacity-80" : ""}
         focus:outline-none`}
     >
       {/* Selection Checkbox */}
@@ -99,9 +188,17 @@ onMouseLeave={(e) => Object.assign(e.currentTarget.style, isSelected ? s.cardSel
         </div>
       )}
 
-      {/* Preview with Icons overlay */}
-      <div className="pointer-events-none relative aspect-square w-full overflow-hidden bg-muted/40 rounded-t-xl">
-        <div className="absolute inset-0 pointer-events-none select-none flex items-center justify-center">
+      {/* Preview with Icons overlay - Long press area */}
+      <div 
+        className="relative aspect-square w-full overflow-hidden bg-muted/40 rounded-t-xl"
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
+        <div className="absolute inset-0 select-none flex items-center justify-center">
           <div className="w-full h-full">
             <BoardWithCoords
               orientation="white"
@@ -124,6 +221,10 @@ onMouseLeave={(e) => Object.assign(e.currentTarget.style, isSelected ? s.cardSel
             <button
               type="button"
               disabled={isSaving}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation()
                 onEdit(opening)
@@ -136,6 +237,10 @@ onMouseLeave={(e) => Object.assign(e.currentTarget.style, isSelected ? s.cardSel
             <button
               type="button"
               disabled={isSaving}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation()
                 void onDelete(opening.id)
@@ -149,7 +254,15 @@ onMouseLeave={(e) => Object.assign(e.currentTarget.style, isSelected ? s.cardSel
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div 
+        className="flex flex-1 flex-col gap-2 p-4"
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
         <div className="flex items-start gap-2">
           <h3 className="text-base font-semibold leading-tight text-pretty text-card-foreground w-full">
             {opening.name}

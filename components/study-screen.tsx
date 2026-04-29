@@ -16,6 +16,7 @@ import type { Opening } from "@/lib/openings"
 import { parsePgn } from "@/lib/openings"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
+import { chessSounds } from "@/lib/sounds"
 
 type Props = {
   opening: Opening
@@ -217,6 +218,7 @@ export function StudyScreen({ opening, onExit, theme }: Props) {
       // Case 1: the move matches what was already next in our history array
       // (either a book move we haven't yet passed, or replaying the existing free tail).
       if (P < history.length && history[P] === san) {
+        chessSounds.playMoveSound()
         setCursor(P + 1)
         return true
       }
@@ -226,6 +228,7 @@ export function StudyScreen({ opening, onExit, theme }: Props) {
       next.push(san)
       setHistory(next)
       setCursor(P + 1)
+      chessSounds.playMoveSound()
       return true
     },
     [cursor, history, promotionData],
@@ -259,12 +262,14 @@ export function StudyScreen({ opening, onExit, theme }: Props) {
       const san = attempted.san
 
       if (P < history.length && history[P] === san) {
+        chessSounds.playMoveSound()
         setCursor(P + 1)
       } else {
         const next = history.slice(0, P)
         next.push(san)
         setHistory(next)
         setCursor(P + 1)
+        chessSounds.playMoveSound()
       }
     },
     [cursor, history, promotionData],

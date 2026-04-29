@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.DS_Store
+dist/
+build/
+.cache/
+# Также рекомендую добавить:
+test-results/
+playwright-report/
+.env

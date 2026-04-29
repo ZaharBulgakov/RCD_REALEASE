@@ -202,25 +202,22 @@ export function ClientApp() {
       setMounted(true)
     }, 3000)
 
-    supabase.auth
-      .getSession()
-      .then(async ({ data }) => {
-        // If there's a session in the URL, Supabase will pick it up.
-        // After processing, we should clear the hash to avoid "stale URL" warnings on refresh.
-        if (typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || window.location.hash.includes('type=recovery'))) {
-          // Use replaceState to clear hash without adding to history
-          window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
-        await applyAuthState(data.session?.user ?? null)
-      })
-      .catch(() => {
-        if (!alive) return
-        setUser(null)
-        setOpenings([])
-        setLoading(false)
-        setMounted(true)
-        clearTimeout(fallbackTimer)
-      })
+supabase.auth
+  .getSession()
+  .then(async ({ data, error }) => {
+    // Обработка невалидного refresh token
+    if (error?.message?.includes('Refresh Token Not Found') || 
+        error?.message?.includes('Invalid Refresh Token')) {
+      await supabase.auth.signOut()
+      if (!alive) return
+      setUser(null)
+      setOpenings([])
+      setLoading(false)
+      setMounted(true)
+      clearTimeout(fallbackTimer)
+      return
+    }   // ← закрывает if (error...)
+  })
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       void applyAuthState(session?.user ?? null).catch(() => {
