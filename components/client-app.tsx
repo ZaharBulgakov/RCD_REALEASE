@@ -376,6 +376,7 @@ supabase.auth
       const mapped: Collection[] = (data || []).map(row => ({
         id: row.id,
         name: row.name,
+        description: row.description || "",
         openingIds: Array.isArray(row.opening_ids) ? row.opening_ids : [],
         createdAt: new Date(row.created_at).getTime(),
       }))
@@ -397,6 +398,7 @@ supabase.auth
         id: generateId(),
         user_id: user.id,
         name,
+        description: "",
         opening_ids: openingIds,
         created_at: new Date().toISOString(),
       }
@@ -409,6 +411,7 @@ supabase.auth
           {
             id: newCollection.id,
             name: newCollection.name,
+            description: "",
             openingIds: newCollection.opening_ids,
             createdAt: new Date(newCollection.created_at).getTime(),
           },
@@ -423,6 +426,7 @@ supabase.auth
       setCollections(prev => [{
         id: newCollection.id,
         name: newCollection.name,
+        description: "",
         openingIds: newCollection.opening_ids,
         createdAt: new Date(newCollection.created_at).getTime(),
       }, ...prev])
@@ -488,6 +492,7 @@ supabase.auth
       const collection = collections.find(c => c.id === id)
       const dbUpdates: any = {}
       if (updates.name !== undefined) dbUpdates.name = updates.name
+      if (updates.description !== undefined) dbUpdates.description = updates.description
       if (updates.openingIds !== undefined) dbUpdates.opening_ids = updates.openingIds
 
       const { error } = await supabase
@@ -863,6 +868,7 @@ supabase.auth
             id: clog.opening_id,
             user_id: user.id,
             name: realName,
+            description: "",
             opening_ids: restoredOpeningIds,
             created_at: new Date().toISOString()
           }
@@ -877,6 +883,7 @@ supabase.auth
           const mappedRestored = restoredCollections.map(data => ({
             id: data.id,
             name: data.name,
+            description: data.description || "",
             openingIds: data.opening_ids,
             createdAt: new Date(data.created_at).getTime()
           }))
@@ -990,6 +997,7 @@ supabase.auth
         setCollections(prev => [...prev, {
           id: newCollection.id,
           name: newCollection.name,
+          description: "",
           openingIds: restoredOpeningIds,
           createdAt: new Date(newCollection.created_at).getTime()
         }])
