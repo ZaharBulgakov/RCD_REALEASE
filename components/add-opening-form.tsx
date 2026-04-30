@@ -562,13 +562,13 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="opening-description" className="text-sm font-semibold text-foreground/80 ml-1">
-            Описание <span className="text-[10px] font-normal text-muted-foreground ml-1">({description.length}/600)</span>
+            Описание <span className="text-[10px] font-normal text-muted-foreground ml-1">({description.length}/1000)</span>
           </label>
           <textarea
             id="opening-description"
             ref={descriptionRef}
             value={description}
-            onChange={(e) => setDescription(e.target.value.slice(0, 600))}
+            onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
             onFocus={() => setFocusedField("description")}
             onBlur={() => setFocusedField(null)}
             placeholder="Короткая заметка о дебюте..."
