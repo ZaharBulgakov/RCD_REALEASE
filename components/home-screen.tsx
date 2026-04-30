@@ -8,6 +8,7 @@ import { CHESS_THEMES, type ChessTheme } from "@/lib/themes"
 import { ThemeSelectorDialog } from "./theme-selector-dialog"
 import { AddToCollectionDialog } from "./add-to-collection-dialog"
 import { SelectCollectionDialog } from "./select-collection-dialog"
+import { CollectionDescriptionDialog } from "./collection-description-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AddOpeningForm } from "./add-opening-form"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -89,6 +90,7 @@ export function HomeScreen({
   const [mounted, setMounted] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [collectionToDeleteId, setCollectionToDeleteId] = useState<string | null>(null)
+  const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false)
   const [cooldownMessage, setCooldownMessage] = useState<string | null>(null)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -130,6 +132,16 @@ export function HomeScreen({
   const handleConfirmAdd = async (newOpeningIds: string[]) => {
     if (!activeCollectionId) return
     await onUpdateCollection(activeCollectionId, { openingIds: newOpeningIds })
+  }
+  const handleEditDescription = () => {
+    if (!activeCollectionId) return
+    setEditingCollectionId(activeCollectionId)
+    setDescriptionDialogOpen(true)
+  }
+  const handleSaveDescription = async (description: string) => {
+    if (!editingCollectionId) return
+    await onUpdateCollection(editingCollectionId, { description })
+    setEditingCollectionId(null)
   }
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) {
@@ -541,7 +553,7 @@ const ThemeIcon = currentTheme.icon
                     style={accentGlow}
                     onClick={() => setActiveCollectionId(collection.id)}
                   >
-                    <div className="mb-3 flex items-start justify-between">
+                    <div className="mb-3 flex items-Start justify-between">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Folder className="h-6 w-6" />
                       </div>
@@ -630,14 +642,14 @@ const ThemeIcon = currentTheme.icon
             {/* КАРТОЧКА ВНУТРИ КОЛЛЕКЦИИ */}
             <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-accent/20 bg-card p-6 shadow-xl shadow-accent/5 sm:flex-row"
           style={accentGlow}>
-            {/* ПОЛЕ НАЗВАНИЯ И ИКНОНКИ */}
-              <div className="flex items-center gap-4 text-center sm:text-left">
+            {/* ПОЛЕ НАЗВАНИЯ И ИКОНКИ */}
+              <div className="flex items-start gap-4 w-full min-w-0">
                 {/* ИКОНКА КОЛЛЕКЦИИ */}
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
                 style={accentGlow}>
-                  <Folder className="h-7 w-7"  />
+                  <Folder className="h-7 w-7" />
                 </div>
-                <div>
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
                   <h2 className="text-xl font-bold leading-tight">
                     {collections.find(c => c.id === activeCollectionId)?.name}
                   </h2>
@@ -646,9 +658,10 @@ const ThemeIcon = currentTheme.icon
                   </p>
                 </div>
               </div>
-              {/* КНОПКИ КОЛЛЕКЦИИ */}
-              <div className="flex w-full items-center justify-center gap-3 sm:w-auto">
-                {/* СТАРТ */}
+              {/* Collection Buttons - 2x2 Grid */}
+              <div className="flex shrink-0 flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                {/* Start */}
                 <button
                   onClick={() => {
                     const collection = collections.find(c => c.id === activeCollectionId)
@@ -658,12 +671,12 @@ const ThemeIcon = currentTheme.icon
                       onStart()
                     }
                   }}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20"
                   style={accentGlow}>
                   <Play className="h-4 w-4 fill-current" />
                   Старт
                 </button>
-                {/* СВОЯ ИГРА */}
+                {/* CUSTOM GAME */}
                 <button
                   onClick={() => {
                     const collection = collections.find(c => c.id === activeCollectionId)
@@ -673,24 +686,34 @@ const ThemeIcon = currentTheme.icon
                       onCustomStart()
                     }
                   }}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-5 text-sm font-semibold transition hover:bg-accent"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-4 text-sm font-semibold transition hover:bg-accent"
                   style={accentGlow}>
                   <Gamepad2 className="h-4 w-4" />
                   Своя игра
                 </button>
-                {/* ДОБАВИТЬ */}
+                {/* ADD */}
                 <button
                   onClick={() => setAddDialogOpen(true)}
                   disabled={isSaving}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-5 text-sm font-semibold transition hover:bg-accent disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-4 text-sm font-semibold transition hover:bg-accent disabled:opacity-50"
                   style={accentGlow}>
                   <Plus className="h-4 w-4" />
                   Добавить
                 </button>
-                {/* ВЕРНУТЬСЯ */}
+                {/* EDIT DESCRIPTION */}
+                <button
+                  onClick={handleEditDescription}
+                  disabled={isSaving}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-4 text-sm font-semibold transition hover:bg-accent disabled:opacity-50"
+                  style={accentGlow}>
+                  <Edit2 className="h-4 w-4" />
+                  Описание
+                </button>
+                </div>
+                {/* RETURN */}
                 <button
                   onClick={() => setActiveCollectionId(null)}
-                  className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-foreground transition hover:bg-accent"
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-foreground transition hover:bg-accent"
                   style={accentGlow}>
                   <RotateCcw className="h-4 w-4" />
                   Вернуться
@@ -698,8 +721,7 @@ const ThemeIcon = currentTheme.icon
               </div>
             </div>
             {/* ПОЛЕ ПОИСКА ВНУТРИ КОЛЛЕКЦИИ */}
-            <div className="flex w-full max-w-md self-center">
-              
+            <div className="flex w-full max-w-md flex-col gap-3 self-center">
               <div className="relative group w-full">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-accent" />
                 <input
@@ -710,11 +732,18 @@ const ThemeIcon = currentTheme.icon
                   className="h-12 w-full rounded-2xl bg-card pl-11 pr-4 text-sm outline-none transition
                     focus:border-accent focus:ring-4 focus:ring-accent/5"
                      style={accentGlow}
-                 
                 />
               </div>
+              </div>
+              {collections.find(c => c.id === activeCollectionId)?.description && (
+                <div className="rounded-2xl max-w-4xl border self-center border-accent/20 bg-card p-4" style={accentGlow}>
+                  <p className="text-lg leading-relaxed text-foreground/80 whitespace-pre-wrap break-words">
+                    {collections.find(c => c.id === activeCollectionId)?.description}
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
+
         )}
 
         {displayOpenings.length === 0 ? (
@@ -857,7 +886,7 @@ const ThemeIcon = currentTheme.icon
                 <LayoutGrid className="h-5 w-5 text-primary" />
                 {activeCollectionId ? "Дебюты в коллекции" : "Основная коллекция"}
                 <span className="text-sm font-normal text-muted-foreground">
-                  ({activeCollectionId ? displayOpenings.length : openings.length} из {activeCollectionId ? OPENINGS_LIMIT : OPENINGS_LIMIT})
+                  ({activeCollectionId ? displayOpenings.length : openings.length} из {activeCollectionId ? COLLECTIONS_LIMIT : OPENINGS_LIMIT})
                 </span>
               </h2>
             </div>
@@ -1141,6 +1170,15 @@ const ThemeIcon = currentTheme.icon
           
         />
       )}
+      {/* Collection Description Dialog */}
+      <CollectionDescriptionDialog
+        open={descriptionDialogOpen}
+        onOpenChange={setDescriptionDialogOpen}
+        onSave={handleSaveDescription}
+        initialDescription={collections.find(c => c.id === editingCollectionId)?.description || ""}
+        collectionName={collections.find(c => c.id === editingCollectionId)?.name || ""}
+        isSaving={isSaving}
+      />
     </div>
   )
 }
