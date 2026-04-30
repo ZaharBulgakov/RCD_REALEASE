@@ -8,8 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { parsePgn, type Opening, OPENINGS_LIMIT } from "@/lib/openings"
+import { parsePgn, type Opening, OPENINGS_LIMIT, COLLECTION_OPENINGS_LIMIT } from "@/lib/openings"
 import { Search, X, Plus } from "lucide-react"
+
 
 type Props = {
   open: boolean
@@ -58,7 +59,7 @@ export function AddToCollectionDialog({ open, onOpenChange, allOpenings, current
 
   function toggle(id: string) {
     setSelected((prev) => {
-      if (!prev.has(id) && prev.size >= OPENINGS_LIMIT) return prev
+      if (!prev.has(id) && prev.size >= COLLECTION_OPENINGS_LIMIT) return prev
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -70,7 +71,7 @@ export function AddToCollectionDialog({ open, onOpenChange, allOpenings, current
     setSelected((prev) => {
       const next = new Set(prev)
       for (const o of filtered) {
-        if (next.size >= OPENINGS_LIMIT) break
+        if (next.size >= COLLECTION_OPENINGS_LIMIT) break
         next.add(o.id)
       }
       return next
@@ -93,8 +94,8 @@ export function AddToCollectionDialog({ open, onOpenChange, allOpenings, current
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               Добавить в коллекцию
-              <span className={`text-sm font-normal ${selected.size >= OPENINGS_LIMIT ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {selected.size} из {OPENINGS_LIMIT}
+              <span className={`text-sm font-normal ${selected.size >= COLLECTION_OPENINGS_LIMIT ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {selected.size} из {COLLECTION_OPENINGS_LIMIT}
               </span>
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
