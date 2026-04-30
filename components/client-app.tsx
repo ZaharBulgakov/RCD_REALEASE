@@ -1,7 +1,7 @@
 "use client"
 
 import { CHESS_THEMES, type ChessTheme } from "@/lib/themes"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { HomeScreen } from "./home-screen"
 import { AddOpeningDialog } from "./add-opening-dialog"
 import { DeletionHistoryDialog } from "./deletion-history-dialog"
@@ -83,6 +83,7 @@ export function ClientApp() {
   const [collections, setCollections] = useState<Collection[]>([])
   const [record, setRecord] = useState<number | null>(null)
   const [screen, setScreen] = useState<Screen>({ name: "home" })
+  const screenRef = useRef<Screen>({ name: "home" })
   const [addOpen, setAddOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editingOpening, setEditingOpening] = useState<Opening | null>(null)
@@ -93,6 +94,10 @@ export function ClientApp() {
    const [currentTheme, setCurrentTheme] = useState<ChessTheme>(CHESS_THEMES[0])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [deletionLogs, setDeletionLogs] = useState<DeletionLog[]>([])
+  const setScreenSafe = useCallback((s: Screen) => {
+    screenRef.current = s
+    setScreen(s)
+  }, [])
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null)
   const [collectionOpeningIds, setCollectionOpeningIds] = useState<string[] | null>(null)
 
@@ -175,6 +180,7 @@ export function ClientApp() {
   // Load session and subscribe to auth changes.
   useEffect(() => {
     let alive = true
+    let previousUser: User | null = null
 
     const applyAuthState = async (currentUser: User | null) => {
       if (!alive) return
@@ -185,12 +191,22 @@ export function ClientApp() {
         await loadRecordFromDb(currentUser.id)
         await loadCollectionsFromDb(currentUser.id)
         await loadDeletionLogsFromDb(currentUser.id)
+        // Only reset to home if user was previously logged out (not just auth refresh)
+        // or if this is the initial load. Preserve all active states during tab switches.
+        if (!previousUser || screenRef.current.name === "home") {
+          setScreenSafe({ name: "home" })
+        }
+        // Additional protection: if we're in any active state (game, study, or edit), don't reset
+        else if (screenRef.current.name === "game" || screenRef.current.name === "study" || (editingOpening && addOpen)) {
+          // Preserve current state - don't reset
+        }
       } else {
         setOpenings([])
         setCollections([])
         setRecord(null)
+        setScreenSafe({ name: "home" })
       }
-      setScreen({ name: "home" })
+      previousUser = currentUser
       setLoading(false)
       setMounted(true)
       clearTimeout(fallbackTimer)
@@ -1106,7 +1122,7 @@ function handleStart(config: SessionConfig) {
   setCollectionOpeningIds(null)
   setGlobalFinishedIds(new Set())
 
-  setScreen({
+  setScreenSafe({
     name: "game",
     session,
     color: config.color,
@@ -1146,7 +1162,7 @@ function handleStart(config: SessionConfig) {
 
     setCustomOpen(false)
     setScoreEnabled(true)
-    setScreen({ 
+    setScreenSafe({ 
       name: "game", 
       session, 
       color: finalColor, 
@@ -1158,7 +1174,7 @@ function handleStart(config: SessionConfig) {
   }
 
   function handleStudy(opening: Opening, fromHistory?: boolean) {
-    setScreen({ name: "study", opening, fromHistory })
+    setScreenSafe({ name: "study", opening, fromHistory })
   }
 
 function handleStartCollection(openingIds: string[]) {
@@ -1174,7 +1190,7 @@ function handleStartCollection(openingIds: string[]) {
   function handleExit(fromStudyScreen?: boolean) {
     // invalidate session and return home
     const wasFromHistory = screen.name === "study" && screen.fromHistory
-    setScreen({ name: "home" })
+    setScreenSafe({ name: "home" })
     if (fromStudyScreen && wasFromHistory) {
       setHistoryOpen(true)
     }
@@ -1228,11 +1244,11 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
 
   const nextSession: SessionUnit[] = [...failedUnits, ...newUnits]
   if (nextSession.length === 0) {
-    setScreen({ name: "home" })
+    setScreenSafe({ name: "home" })
     return
   }
   setScoreEnabled(false)
-  setScreen({
+  setScreenSafe({
     name: "game",
     session: nextSession,
     color: screen.color,
@@ -1390,7 +1406,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
                 if (scoreEnabled) {
                   await maybeUpdateRecord(sessionPoints)
                 }
-                setScreen({
+                setScreenSafe({
                   name: "results",
                   isCustom: screen.isCustom,
                   results: enriched,
@@ -1436,7 +1452,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
                 if (scoreEnabled) {
                   await maybeUpdateRecord(sessionPoints)
                 }
-                setScreen({
+                setScreenSafe({
                   name: "results",
                   isCustom: screen.isCustom,
                   results: enriched,
