@@ -9,6 +9,7 @@ function generateId(): string {
 
 export const OPENINGS_LIMIT = 1000
 export const COLLECTIONS_LIMIT = 100
+export const COLLECTION_OPENINGS_LIMIT = 100
 
 export type Opening = {
   id: string
@@ -21,6 +22,7 @@ export type Opening = {
 export type Collection = {
   id: string
   name: string
+  description: string
   openingIds: string[]
   createdAt: number
 }
