@@ -204,11 +204,12 @@ export function OpeningCard({
       {/* Board */}
       <div
         className="relative aspect-square w-full overflow-hidden"
+        style={{ touchAction: "pan-y" }}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         {...touchHandlers}
       >
-        <div className="absolute inset-0 select-none flex items-center justify-center">
+        <div className="absolute inset-0 select-none flex items-center justify-center pointer-events-none">
           <div className="w-full h-full">
             <BoardWithCoords
               orientation="white"
