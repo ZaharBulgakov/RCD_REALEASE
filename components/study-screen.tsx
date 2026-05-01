@@ -66,6 +66,10 @@ export function StudyScreen({ opening, onExit, theme }: Props) {
     }
   }, [error])
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" })
+  }, [])
+
   // When opening changes (shouldn't during a single mount, but just in case), reset.
   useEffect(() => {
     setHistory(parsed.moves.slice())
