@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { Plus, Play, Search, Swords, Headset, UserCircle2, LogOut, Gamepad2, Moon, SortAsc, Calendar, LayoutGrid, AlertTriangle, Trash2, Clock, History, RotateCcw, Check, X, FolderPlus, Folder, MoreVertical, Edit2, PlayCircle, Paintbrush, ChevronDown } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Plus, Play, Search, Swords, Headset, UserCircle2, LogOut, Gamepad2, Moon, SortAsc, Calendar, LayoutGrid, AlertTriangle, Trash2, Clock, History, RotateCcw, Check, X, FolderPlus, Folder, MoreVertical, Edit2, PlayCircle, Paintbrush, ChevronDown, Pencil } from "lucide-react"
 import { OpeningCard } from "./opening-card"
 import { parsePgn, type Opening, type Collection, OPENINGS_LIMIT, COLLECTIONS_LIMIT } from "@/lib/openings"
 import { CHESS_THEMES, type ChessTheme } from "@/lib/themes"
@@ -91,6 +91,11 @@ export function HomeScreen({
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [collectionToDeleteId, setCollectionToDeleteId] = useState<string | null>(null)
   const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false)
+  const [editingDescription, setEditingDescription] = useState(false)
+  const [descriptionDraft, setDescriptionDraft] = useState("")
+  const [descriptionKey, setDescriptionKey] = useState(0)
+  const descTouchStartPos = useRef<{ x: number; y: number } | null>(null)
+  const descScrolled = useRef(false)
   const [cooldownMessage, setCooldownMessage] = useState<string | null>(null)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -327,7 +332,10 @@ const ThemeIcon = currentTheme.icon
   return ( 
     <div className="screen-in min-h-dvh bg-background">
       {/* ХЕДЕР */}
-      <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/85 backdrop-blur-md" style={{ borderColor: s.accent }}>
+      <header
+  className="fixed inset-x-0 top-0 z-40 bg-background/85 backdrop-blur-md"
+  style={{ borderBottom: `1px solid ${s.accent}` }}
+>
       
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
@@ -660,7 +668,7 @@ const ThemeIcon = currentTheme.icon
               </div>
               {/* Collection Buttons - 2x2 Grid */}
               <div className="flex shrink-0 flex-col gap-2">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                 {/* Start */}
                 <button
                   onClick={() => {
@@ -700,15 +708,7 @@ const ThemeIcon = currentTheme.icon
                   <Plus className="h-4 w-4" />
                   Добавить
                 </button>
-                {/* EDIT DESCRIPTION */}
-                <button
-                  onClick={handleEditDescription}
-                  disabled={isSaving}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-4 text-sm font-semibold transition hover:bg-accent disabled:opacity-50"
-                  style={accentGlow}>
-                  <Edit2 className="h-4 w-4" />
-                  Описание
-                </button>
+
                 </div>
                 {/* RETURN */}
                 <button
@@ -735,13 +735,79 @@ const ThemeIcon = currentTheme.icon
                 />
               </div>
               </div>
-              {collections.find(c => c.id === activeCollectionId)?.description && (
-                <div className="rounded-2xl max-w-4xl border self-center border-accent/20 bg-card p-4" style={accentGlow}>
-                  <p className="text-lg leading-relaxed text-foreground/80 whitespace-pre-wrap break-words">
-                    {collections.find(c => c.id === activeCollectionId)?.description}
-                  </p>
-                </div>
-              )}
+              {(() => {
+                const activeCollection = collections.find(c => c.id === activeCollectionId)
+                if (!activeCollection) return null
+                const hasDescription = !!activeCollection.description
+                if (!hasDescription && !editingDescription) return null
+                return (
+                  <div className="rounded-2xl max-w-4xl border self-center border-accent/20 bg-card p-4 w-full" style={accentGlow}>
+                    <div className="flex flex-col gap-3">
+                      <p
+                        key={descriptionKey}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onMouseDown={() => {
+                          setEditingDescription(true)
+                          setDescriptionDraft(activeCollection.description || "")
+                        }}
+                        onTouchStart={(e) => {
+                          descScrolled.current = false
+                          descTouchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+                        }}
+                        onTouchMove={(e) => {
+                          if (!descTouchStartPos.current) return
+                          const dx = Math.abs(e.touches[0].clientX - descTouchStartPos.current.x)
+                          const dy = Math.abs(e.touches[0].clientY - descTouchStartPos.current.y)
+                          if (dx > 8 || dy > 8) descScrolled.current = true
+                        }}
+                        onTouchEnd={(e) => {
+                          if (!descScrolled.current) {
+                            setEditingDescription(true)
+                            setDescriptionDraft(activeCollection.description || "")
+                          }
+                          descTouchStartPos.current = null
+                        }}
+                        onInput={(e) => setDescriptionDraft(e.currentTarget.innerText)}
+                        className="text-lg leading-relaxed text-foreground/80 whitespace-pre-wrap break-words outline-none min-h-[2em] cursor-text"
+                        style={{ caretColor: "var(--color-accent, currentColor)" }}
+                      >
+                        {activeCollection.description}
+                      </p>
+                      {editingDescription && (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setEditingDescription(false)
+                              setDescriptionDraft("")
+                              setDescriptionKey(k => k + 1)
+                            }}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:bg-accent/10"
+                          >
+                            Отмена
+                          </button>
+                          <button
+                            disabled={isSaving}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={async () => {
+                              if (!activeCollectionId) return
+                              await onUpdateCollection(activeCollectionId, { description: descriptionDraft })
+                              setEditingDescription(false)
+                              setDescriptionDraft("")
+                            }}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:brightness-110 disabled:opacity-50"
+                            style={accentGlow}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            Сохранить
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
         )}
@@ -992,39 +1058,52 @@ const ThemeIcon = currentTheme.icon
               <span className="text-sm font-medium">дебютов выбрано</span>
             </div>
             <div className="h-8 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              {isCollectionMode ? (
+          <div className="flex items-center gap-2">
+            {isCollectionMode ? (
+              <button
+                onClick={() => setCollectionDialogOpen(true)}
+                disabled={isSaving}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-error px-6 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-lg shadow-error/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Check className="h-4 w-4" />
+                {editingCollectionId ? "Обновить коллекцию" : "Создать коллекцию"}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                {!activeCollectionId && (
+                  <button
+                    onClick={() => setSelectCollectionDialogOpen(true)}
+                    disabled={isSaving}
+                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                    Добавить в коллекцию
+                  </button>
+                )}
                 <button
-                  onClick={() => setCollectionDialogOpen(true)}
+                  onClick={handleBulkDelete}
                   disabled={isSaving}
                   className="inline-flex h-11 items-center gap-2 rounded-xl bg-error px-6 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-lg shadow-error/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Check className="h-4 w-4" />
-                  {editingCollectionId ? "Обновить коллекцию" : "Создать коллекцию"}
+                  <Trash2 className="h-4 w-4" />
+                  Удалить ({selectedIds.size})
                 </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {!activeCollectionId && (
-                    <button
-                      onClick={() => setSelectCollectionDialogOpen(true)}
-                      disabled={isSaving}
-                      className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <FolderPlus className="h-4 w-4" />
-                      Добавить в коллекцию
-                    </button>
-                  )}
-                  <button
-                    onClick={handleBulkDelete}
-                    disabled={isSaving}
-                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-error px-6 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-lg shadow-error/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Удалить ({selectedIds.size})
-                  </button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+            {/* Кнопка Отмена */}
+            <button
+              onClick={() => {
+                setIsDeleteMode(false)
+                setIsCollectionMode(false)
+                setSelectedIds(new Set())
+              }}
+              disabled={isSaving}
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-transparent px-4 text-sm font-semibold transition hover:bg-accent disabled:opacity-50"
+            >
+              <X className="h-4 w-4" />
+              Отмена
+            </button>
+          </div>
           </div>
         </div>
       )}

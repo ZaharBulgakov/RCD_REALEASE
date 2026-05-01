@@ -484,7 +484,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
       className={`flex flex-col w-full overflow-hidden transition-all duration-500 ease-in-out ${
         isInline ? "bg-card rounded-2xl " : "p-0"
       } ${isInline && !isExpanded && !isEditMode ? "max-h-[68px]" : "max-h-[2000px]"}`}
-      style={isInline && s ? s.card : {}}
+      style={isInline && s ? { boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 100%, transparent), 0 0 24px 4px ${s.glow}` } : {}}
     >
       {(isInline || isEditMode) && (
           <div 

@@ -91,7 +91,6 @@ export function ClientApp() {
   const [customOpen, setCustomOpen] = useState(false)
   const [customInitialSelection, setCustomInitialSelection] = useState<string[]>([])
   const [scoreEnabled, setScoreEnabled] = useState(true)
-   const [currentTheme, setCurrentTheme] = useState<ChessTheme>(CHESS_THEMES[0])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [deletionLogs, setDeletionLogs] = useState<DeletionLog[]>([])
   const setScreenSafe = useCallback((s: Screen) => {
@@ -102,13 +101,15 @@ export function ClientApp() {
   const [collectionOpeningIds, setCollectionOpeningIds] = useState<string[] | null>(null)
 
   // Загрузка сохранённой темы
-  useEffect(() => {
+  const [currentTheme, setCurrentTheme] = useState<ChessTheme>(() => {
+    if (typeof window === "undefined") return CHESS_THEMES[0]
     const saved = localStorage.getItem("rcd_board_theme")
     if (saved) {
       const found = CHESS_THEMES.find(t => t.id === saved)
-      if (found) setCurrentTheme(found)
+      if (found) return found
     }
-  }, [])
+    return CHESS_THEMES[0]
+  })
 
   useEffect(() => {
     if (currentTheme.systemDesign) {

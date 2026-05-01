@@ -38,12 +38,13 @@ export function getStyles(theme: ChessTheme) {
 
     /** Обычная карточка */
 card: {
-  boxShadow: `0 0 0 1px ${accent}, 0 0 16px 2px ${glow}`
-} as React.CSSProperties,
+  boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 40%, transparent), 0 0 8px 1px ${glow}`
+},
 
+// cardHover — при наведении (ярче)
 cardHover: {
-  boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 60%, transparent), 0 0 20px 4px ${glow}`
-} as React.CSSProperties,
+  boxShadow: `0 0 0 1px ${accent}, 0 0 20px 4px ${glow}`
+},
 
     /** Карточка выбранная (isSelected) */
     cardSelected: {
