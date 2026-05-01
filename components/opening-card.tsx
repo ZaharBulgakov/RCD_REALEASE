@@ -43,6 +43,7 @@ export function OpeningCard({
   const SCROLL_THRESHOLD = 8
   const didLongPressRef = useRef(false)
   const blockNextClickRef = useRef(false)
+  const didScrollRef = useRef(false)
 
   const s = getStyles(theme)
   const parsed = useMemo(() => parsePgn(opening.pgn), [opening.pgn])
@@ -98,6 +99,7 @@ export function OpeningCard({
     if (isSaving || isDeleteMode) return
     const touch = e.touches[0]
     touchStartPos.current = { x: touch.clientX, y: touch.clientY }
+    didScrollRef.current = false
     longPressTimerRef.current = setTimeout(() => {
       setIsLongPressing(true)
       didLongPressRef.current = true
@@ -114,6 +116,7 @@ export function OpeningCard({
     const dy = Math.abs(touch.clientY - touchStartPos.current.y)
     if (dx > SCROLL_THRESHOLD || dy > SCROLL_THRESHOLD) {
       cancelLongPress()
+      didScrollRef.current = true
       touchStartPos.current = null
     }
   }
@@ -121,8 +124,9 @@ export function OpeningCard({
   const handleTouchEnd = (e: React.TouchEvent) => {
     cancelLongPress()
     touchStartPos.current = null
-    if (!didLongPressRef.current && !isDeleteMode) onStudy(opening)
+    if (!didLongPressRef.current && !isDeleteMode && !didScrollRef.current) onStudy(opening)
     didLongPressRef.current = false
+    didScrollRef.current = false
     setIsLongPressing(false)
   }
 
