@@ -149,7 +149,14 @@ export function GameScreen({ session, color, onExit, onFinish, scoringEnabled, t
     if (!u) return
 
     // Determine player color for this unit.
-    const currentUnitPlayerColor = color === "random" ? (Math.random() < 0.5 ? "white" : "black") : color
+    // Приоритет: leadingSide дебюта → color сессии → случайный
+    const opening = u.kind === "single" ? u.opening : u.short
+    const leadingSide = opening.leadingSide ?? "random"
+    const effectiveColor = leadingSide !== "random" ? leadingSide : color
+    const currentUnitPlayerColor = effectiveColor === "random"
+      ? (Math.random() < 0.5 ? "white" : "black")
+      : effectiveColor
+    console.log("[GameScreen] opening:", opening.name, "| leadingSide:", opening.leadingSide, "| effectiveColor:", effectiveColor, "| playerColor:", currentUnitPlayerColor)
     setPlayerColor(currentUnitPlayerColor)
 
     const fresh = new Chess()

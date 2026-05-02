@@ -68,17 +68,16 @@ export function BoardWithCoords({ options, orientation, boardLight, boardDark }:
       <div ref={containerRef} className="min-w-0">
         {mounted && boardWidth > 0 && (
           <Chessboard
+            key={orientation}
             options={{
-              position: options?.position || "start",
               boardOrientation: orientation,
+              position: options?.position || "start",
               showNotation: false,
               darkSquareStyle: { backgroundColor: boardDark ?? "var(--board-dark)" },
               lightSquareStyle: { backgroundColor: boardLight ?? "var(--board-light)" },
               onPieceDrop: options?.onPieceDrop,
               allowDragging: options?.allowDragging !== false,
               animationDurationInMs: options?.animationDurationInMs ?? 200,
-              // @ts-ignore
-              boardWidth,
             }}
           />
         )}

@@ -7,6 +7,8 @@ import { useMemo, useRef, useState } from "react"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
 import { getStyles } from "@/lib/styles"
+import { LeadingSideIcon } from "./ui/leading-side-icon"
+
 
 
 type Props = {
@@ -47,6 +49,19 @@ export function OpeningCard({
 
   const s = getStyles(theme)
   const parsed = useMemo(() => parsePgn(opening.pgn), [opening.pgn])
+
+  // Determine board orientation:
+  // - explicit white/black → use as-is
+  // - random → infer from final FEN active color:
+  //   if it's black's turn → white made the last move → leading side is white
+  //   if it's white's turn → black made the last move → leading side is black
+  const boardOrientation = useMemo((): "white" | "black" => {
+    if (opening.leadingSide === "white") return "white"
+    if (opening.leadingSide === "black") return "black"
+    const fenActiveColor = parsed.finalFen.split(" ")[1]
+    return fenActiveColor === "b" ? "white" : "black"
+  }, [opening.leadingSide, parsed.finalFen])
+
   const updatedLabel = useMemo(() => {
     const d = new Date(opening.createdAt)
     try {
@@ -212,7 +227,7 @@ export function OpeningCard({
         <div className="absolute inset-0 select-none flex items-center justify-center pointer-events-none">
           <div className="w-full h-full">
             <BoardWithCoords
-              orientation="white"
+              orientation={boardOrientation}
               boardLight={theme.systemDesign?.boardLight}
               boardDark={theme.systemDesign?.boardDark}
               options={{
@@ -285,10 +300,15 @@ export function OpeningCard({
         onMouseUp={handleMouseUp}
         {...touchHandlers}
       >
-        <div className="flex items-start gap-2">
-          <h3 className="text-base font-semibold leading-tight text-pretty text-card-foreground w-full">
+        <div className="flex items-start justify-between gap-1.5">
+          <h3 className="font-bold text-sm leading-snug line-clamp-2 flex-1">
             {opening.name}
           </h3>
+          <LeadingSideIcon
+            side={opening.leadingSide ?? "random"}
+            size={16}
+            className="shrink-0 mt-0.5"
+          />
         </div>
         <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
           {opening.description || "Без описания"}

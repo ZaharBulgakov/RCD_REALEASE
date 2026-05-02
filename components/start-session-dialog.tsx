@@ -11,12 +11,15 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Crown, Link2, Type, Shuffle } from "lucide-react"
 import type { Opening } from "@/lib/openings"
-import { countMaxPairs } from "@/lib/openings"
+import { countMaxPairs, filterOpeningsByLeadingSide } from "@/lib/openings"
 import type { ChessTheme } from "@/lib/themes"
 import { getStyles } from "@/lib/styles"
+import { LeadingSideIcon } from "./ui/leading-side-icon"
+
+export type SessionColor = "white" | "black" | "random" | "absolute"
 
 export type SessionConfig = {
-  color: "white" | "black" | "random"
+  color: SessionColor
   count: number
   advanced: boolean
   mode: "moves" | "names"
@@ -31,6 +34,29 @@ type Props = {
   isSaving?: boolean
 }
 
+// Опции выбора стороны
+const COLOR_OPTIONS: {
+  value: SessionColor
+  label: string
+  icon: React.ReactNode
+}[] = [
+  {
+    value: "white",
+    label: "Белые",
+    icon: <LeadingSideIcon side="white" size={22} />,
+  },
+  {
+    value: "random",
+    label: "Случайно",
+    icon: <LeadingSideIcon side="random" size={22} />,
+  },
+  {
+    value: "black",
+    label: "Чёрные",
+    icon: <LeadingSideIcon side="black" size={22} />,
+  },
+]
+
 export function StartSessionDialog({
   currentTheme,
   open,
@@ -40,31 +66,45 @@ export function StartSessionDialog({
   isSaving = false,
 }: Props) {
   const s = getStyles(currentTheme)
-  const accentGlow = { boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}` }
-  const [color, setColor] = useState<"white" | "black" | "random">("white")
+  const accentGlow = {
+    boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}`,
+  }
+  const [color, setColor] = useState<SessionColor>("white")
   const [count, setCount] = useState<number>(1)
   const [advanced, setAdvanced] = useState<boolean>(false)
   const [mode, setMode] = useState<"moves" | "names">("moves")
 
-  const maxPairs = useMemo(
-    () => (open ? countMaxPairs(openings) : 0),
-    [open, openings],
+  // Дебюты, доступные для выбранной стороны
+  const filteredOpenings = useMemo(
+    () => filterOpeningsByLeadingSide(openings, color),
+    [openings, color],
   )
-  const maxSingles = openings.length
+
+  const maxPairs = useMemo(
+    () => (open ? countMaxPairs(filteredOpenings) : 0),
+    [open, filteredOpenings],
+  )
+  const maxSingles = filteredOpenings.length
   const max =
-    mode === "moves" ? Math.max(1, advanced ? maxPairs : maxSingles) : Math.max(1, maxSingles)
+    mode === "moves"
+      ? Math.max(1, advanced ? maxPairs : maxSingles)
+      : Math.max(1, maxSingles)
   const disabled =
-    mode === "moves" ? (advanced ? maxPairs === 0 : maxSingles === 0) : maxSingles === 0
+    mode === "moves"
+      ? advanced
+        ? maxPairs === 0
+        : maxSingles === 0
+      : maxSingles === 0
 
   useEffect(() => {
     if (!open) return
     setColor("white")
     setMode("moves")
     setAdvanced(false)
-    setCount(Math.min(3, Math.max(1, maxSingles)))
-  }, [open, maxSingles])
+    setCount(Math.min(3, Math.max(1, openings.length)))
+  }, [open, openings.length])
 
-  // Re-clamp count when switching modes.
+  // Re-clamp count when color/mode changes
   useEffect(() => {
     setCount((prev) => {
       const effectiveMax =
@@ -75,9 +115,8 @@ export function StartSessionDialog({
           : Math.max(1, maxSingles)
       return Math.min(Math.max(prev, 1), effectiveMax)
     })
-  }, [advanced, maxPairs, maxSingles, mode])
+  }, [advanced, maxPairs, maxSingles, mode, color])
 
-  // Names mode doesn't use pairs.
   useEffect(() => {
     if (mode !== "names") return
     setAdvanced(false)
@@ -86,7 +125,12 @@ export function StartSessionDialog({
   function handleStart() {
     if (disabled) return
     const clamped = Math.min(Math.max(count, 1), max)
-    onStart({ color, count: clamped, advanced: mode === "moves" ? advanced : false, mode })
+    onStart({
+      color,
+      count: clamped,
+      advanced: mode === "moves" ? advanced : false,
+      mode,
+    })
   }
 
   return (
@@ -95,56 +139,52 @@ export function StartSessionDialog({
         <DialogHeader>
           <DialogTitle>Настройка тренировки</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Выберите цвет и количество дебютов для сессии.
+            Выберите сторону и количество дебютов для сессии.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-5">
+          {/* Выбор стороны */}
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium">Играть за</span>
             <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setColor("white")}
-                disabled={isSaving}
-                className={`flex flex-col items-center gap-2 rounded-lg border p-4 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  color === "white"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card hover:border-primary/50"
-                }`}
-              >
-                <Crown className="h-6 w-6 fill-current" />
-                Белых
-              </button>
-              <button
-                type="button"
-                onClick={() => setColor("random")}
-                disabled={isSaving}
-                className={`flex flex-col items-center gap-2 rounded-lg border p-4 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  color === "random"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card hover:border-primary/50"
-                }`}
-              >
-                <Shuffle className="h-6 w-6" />
-                Случайно
-              </button>
-              <button
-                type="button"
-                onClick={() => setColor("black")}
-                disabled={isSaving}
-                className={`flex flex-col items-center gap-2 rounded-lg border p-4 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  color === "black"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card hover:border-primary/50"
-                }`}
-              >
-                <Crown className="h-6 w-6" />
-                Чёрных
-              </button>
+              {COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setColor(opt.value)}
+                  disabled={isSaving}
+                  className={`flex flex-col items-center gap-2 rounded-lg border p-4 text-sm font-medium transition
+                    disabled:opacity-50 disabled:cursor-not-allowed ${
+                      color === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card hover:border-primary/50"
+                    }`}
+                >
+                  {opt.icon}
+                  {opt.label}
+                </button>
+              ))}
             </div>
+            {/* Счётчик доступных дебютов для выбранной стороны */}
+            <p className="text-xs text-muted-foreground">
+              Доступно дебютов для этой стороны:{" "}
+              <span
+                className={`font-semibold ${
+                  maxSingles > 0 ? "text-foreground" : "text-destructive"
+                }`}
+              >
+                {maxSingles}
+              </span>
+              {maxSingles === 0 && (
+                <span className="ml-1 text-destructive">
+                  — добавьте дебюты с этой стороной
+                </span>
+              )}
+            </p>
           </div>
 
+          {/* Упрощённый режим (Пары) */}
           <label
             htmlFor="advanced-toggle"
             className={`flex items-start justify-between gap-4 rounded-lg border p-4 transition ${
@@ -177,10 +217,15 @@ export function StartSessionDialog({
               id="advanced-toggle"
               checked={mode === "moves" && advanced}
               onCheckedChange={setAdvanced}
-              disabled={mode === "names" || (maxPairs === 0 && openings.length > 0) || isSaving}
+              disabled={
+                mode === "names" ||
+                (maxPairs === 0 && filteredOpenings.length > 0) ||
+                isSaving
+              }
             />
           </label>
 
+          {/* Усложнённый режим (Названия) */}
           <label
             htmlFor="names-toggle"
             className={`flex items-start justify-between gap-4 rounded-lg border p-4 transition ${
@@ -210,6 +255,7 @@ export function StartSessionDialog({
             />
           </label>
 
+          {/* Количество дебютов */}
           <div className="flex flex-col gap-2">
             <label htmlFor="session-count" className="text-sm font-medium">
               Количество {mode === "moves" && advanced ? "пар" : "дебютов"}
@@ -232,10 +278,8 @@ export function StartSessionDialog({
             <p className="text-xs text-muted-foreground">
               {mode === "moves" && advanced ? (
                 <>
-                  Максимум пар, которые можно собрать:{" "}
+                  Максимум пар:{" "}
                   <span className="font-medium text-foreground">{maxPairs}</span>.
-                  Если полное число пар собрать не удастся, сессия стартует с теми,
-                  что найдены.
                 </>
               ) : (
                 <>
@@ -247,6 +291,7 @@ export function StartSessionDialog({
             </p>
           </div>
 
+          {/* Кнопки */}
           <div className="mt-2 flex items-center justify-end gap-2">
             <button
               type="button"

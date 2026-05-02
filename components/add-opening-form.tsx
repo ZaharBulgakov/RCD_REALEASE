@@ -10,10 +10,11 @@ const Chessboard = dynamic(
   },
   { ssr: false }
 )
-import { parsePgn, type Opening } from "@/lib/openings"
+import { parsePgn, type Opening, type LeadingSide } from "@/lib/openings"
+import { LeadingSideSelector } from "./ui/leading-side-selector"
 import { findBestOpeningMatch } from "@/lib/openings-db"
 import { Chess } from "chess.js"
-import { X, Save, Eraser, Plus, Pencil, Wand2, Keyboard, Gamepad2, RotateCcw, ChevronDown } from "lucide-react"
+import { X, Save, Eraser, Plus, Pencil, Wand2, Keyboard, Gamepad2, RotateCcw, ChevronDown, RefreshCw } from "lucide-react"
 import { Spinner } from "./ui/spinner"
 import { ChessKeyboard } from "./chess-keyboard"
 import { BoardWithCoords } from "./board-with-coords"
@@ -53,6 +54,7 @@ function generateId(): string {
 }
 
 export function AddOpeningForm({ onSave, initialOpening, onCancel, isInline, isSaving = false, currentTheme }: Props) {
+  const [leadingSide, setLeadingSide] = useState<LeadingSide>("random") // [PATCH]
   const s = currentTheme ? getStyles(currentTheme) : null
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [pendingOpening, setPendingOpening] = useState<Opening | null>(null)
@@ -61,6 +63,7 @@ export function AddOpeningForm({ onSave, initialOpening, onCancel, isInline, isS
   const [pgn, setPgn] = useState("")
   const [viewMode, setViewMode] = useState<"keyboard" | "board">("keyboard")
   const [isExpanded, setIsExpanded] = useState(false)
+  const [boardOrientation, setBoardOrientation] = useState<"white" | "black">("white")
 const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
   const [promotionData, setPromotionData] = useState<{ from: string; to: string; color: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -255,7 +258,8 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
       const saved = localStorage.getItem("rcd_opening_draft_create")
       if (saved) {
         try {
-          const { name: sName, description: sDesc, pgn: sPgn } = JSON.parse(saved)
+          const { name: sName, description: sDesc, pgn: sPgn, leadingSide: sLeadingSide } = JSON.parse(saved)
+          setLeadingSide(sLeadingSide || "random") // [PATCH]
           setName(sName || "")
           setDescription(sDesc || "")
           setPgn(sPgn || "")
@@ -269,7 +273,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
   useEffect(() => {
     if (isInline && !isEditMode) {
       if (name || description || pgn) {
-        localStorage.setItem("rcd_opening_draft_create", JSON.stringify({ name, description, pgn }))
+        localStorage.setItem("rcd_opening_draft_create", JSON.stringify({ name, description, pgn, leadingSide }))
       } else {
         localStorage.removeItem("rcd_opening_draft_create")
       }
@@ -281,10 +285,12 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
       setName(initialOpening.name)
       setDescription(initialOpening.description)
       setPgn(initialOpening.pgn)
+      setLeadingSide(initialOpening.leadingSide ?? "random") // [PATCH]
     } else if (!isInline) {
       setName("")
       setDescription("")
       setPgn("")
+      setLeadingSide("random") // [PATCH]
     }
     setError(null)
   }, [initialOpening, isInline])
@@ -295,6 +301,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
     setPgn("")
     setError(null)
     localStorage.removeItem("rcd_opening_draft_create")
+    setLeadingSide("random") // [PATCH]
   }
 
   function handleGenerate() {
@@ -334,6 +341,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
       description: description.trim(),
       pgn: pgn.trim(),
       createdAt: initialOpening?.createdAt ?? Date.now(),
+      leadingSide,
     }
     
     setPendingOpening(openingToSave)
@@ -578,8 +586,17 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
             style={s ? { ...(focusedField === "description" ? s.inputFocus : s.input), boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}` } : {}}
           />
         </div>
-      </div>
 
+        <LeadingSideSelector
+          value={leadingSide}
+          onChange={setLeadingSide}
+          disabled={isSaving || loading}
+          accentStyle={s ? {
+            borderColor: s.accent,
+            boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 12px 2px ${s.glow}`,
+          } : undefined}
+        />
+      </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="opening-pgn" className="text-sm font-semibold text-foreground/80 ml-1">
           PGN <span className="text-[10px] font-normal text-muted-foreground ml-1">({parsePgn(pgn).fullMoveCount}/200)</span>
@@ -657,7 +674,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
           <div className="relative w-full flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-200">
             <div className="relative w-full max-w-[340px] rounded-lg border border-border">
 <BoardWithCoords
-  orientation="white"
+  orientation={boardOrientation}
   boardLight={currentTheme?.systemDesign?.boardLight}
   boardDark={currentTheme?.systemDesign?.boardDark}
   options={{
@@ -696,14 +713,24 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
             </div>
             
             <div className="flex w-full max-w-[340px] justify-between items-center px-1">
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs font-medium"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Удалить ход
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs font-medium"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Удалить ход
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBoardOrientation(o => o === "white" ? "black" : "white")}
+                  title="Развернуть доску"
+                  className="flex items-center justify-center h-7 w-7 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={resetBoard}

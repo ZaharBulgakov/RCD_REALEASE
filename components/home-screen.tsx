@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Plus, Play, Search, Swords, Headset, UserCircle2, LogOut, Gamepad2, Moon, SortAsc, Calendar, LayoutGrid, AlertTriangle, Trash2, Clock, History, RotateCcw, Check, X, FolderPlus, Folder, MoreVertical, Edit2, PlayCircle, Paintbrush, ChevronDown, Pencil } from "lucide-react"
+import { Plus, Play, Search, Swords, Zap, Headset, UserCircle2, LogOut, Gamepad2, Moon, SortAsc, Calendar, LayoutGrid, AlertTriangle, Trash2, Clock, History, RotateCcw, Check, X, FolderPlus, Folder, MoreVertical, Edit2, PlayCircle, Paintbrush, ChevronDown, Pencil } from "lucide-react"
 import { OpeningCard } from "./opening-card"
 import { parsePgn, type Opening, type Collection, OPENINGS_LIMIT, COLLECTIONS_LIMIT } from "@/lib/openings"
 import { CHESS_THEMES, type ChessTheme } from "@/lib/themes"
@@ -15,7 +15,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils"
 import { getStyles } from "@/lib/styles"
 
+
 type Props = {
+  onAbsoluteRandom: () => void
   openings: Opening[]
   collections: Collection[]
   onAdd: (opening: Opening) => Promise<string | null>
@@ -45,6 +47,7 @@ type Props = {
 }
 
 export function HomeScreen({
+  onAbsoluteRandom,
   openings,
   collections = [],
   onAdd,
@@ -454,12 +457,26 @@ const ThemeIcon = currentTheme.icon
           <div className="mb-8 flex flex-col items-center gap-6 md:mb-10">
             {/* КАРТОЧКАСТАРТ И СВОЯ ИГРА */}
             <div className="flex flex-wrap items-center justify-center gap-3">
+              {/* Абсолютный рандом — над Стартом */}
+              <button
+                type="button"
+                onClick={onAbsoluteRandom}
+                disabled={openings.length === 0 || isSaving}
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-6 text-sm font-semibold transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+                style={accentGlow}
+                title="Подаёт дебюты любой стороны: белые, чёрные и случайные"
+              >
+                <Zap className="h-4 w-4" />
+                Абсолютный рандом
+              </button>
+
               <button
                 type="button"
                 onClick={onStart}
                 disabled={openings.length === 0 || isSaving}
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-              style={accentGlow}>
+                style={accentGlow}
+              >
                 <Play className="h-4 w-4 fill-current" />
                 Старт
               </button>
@@ -475,6 +492,7 @@ const ThemeIcon = currentTheme.icon
                 Своя игра
               </button>
             </div>
+
 
             {/* КАРТОЧКА ПОИСКА */}
             <div className="flex w-full max-w-md flex-col gap-4">

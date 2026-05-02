@@ -57,7 +57,7 @@ type Screen =
       isRandomColor?: boolean
       collectionOpeningIds?: string[] | null
     }
-  | { name: "study"; opening: Opening; fromHistory?: boolean }
+  | { name: "study"; opening: Opening; fromHistory?: boolean; initialOrientation?: "white" | "black" }
 
 type DeletionLog = {
   id: string
@@ -256,7 +256,7 @@ supabase.auth
   async function loadOpeningsFromDb(userId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from("openings")
-      .select("id, name, description, pgn, created_at")
+      .select("id, name, description, pgn, created_at, leading_side")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
     if (error) {
@@ -275,10 +275,22 @@ supabase.auth
       description: row.description ?? "",
       pgn: row.pgn,
       createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+      leadingSide: (row.leading_side ?? "random") as import("@/lib/openings").LeadingSide,
     }))
     // CRITICAL: fully replace local state with Supabase snapshot.
     setOpenings(mapped)
     return true
+  }
+
+  function handleAbsoluteRandom() {
+    // Запускаем диалог старта — внутри пользователь видит сторону "absolute"
+    // уже предвыбранной через defaultColor (см. StartSessionDialog)
+    handleStart({
+      color: "absolute",
+      count: Math.min(3, openings.length) || 1,
+      advanced: false,
+      mode: "moves",
+    })
   }
 
   function clearLegacyLocalStorageOnce(userId: string) {
@@ -578,6 +590,7 @@ supabase.auth
         name: o.name,
         description: o.description,
         pgn: o.pgn,
+        leading_side: o.leadingSide ?? "random",
         created_at: new Date(o.createdAt).toISOString(),
       })
       if (error) {
@@ -613,6 +626,7 @@ supabase.auth
         name: o.name,
         description: o.description,
         pgn: o.pgn,
+        leading_side: o.leadingSide ?? "random",
         created_at: new Date(o.createdAt).toISOString(),
       }))
 
@@ -819,6 +833,7 @@ supabase.auth
           description: log.opening_description,
           pgn: log.opening_pgn,
           createdAt: new Date(log.deleted_at).getTime(),
+          leadingSide: "random",
         })
       })
 
@@ -1011,6 +1026,7 @@ supabase.auth
           description: log.opening_description,
           pgn: log.opening_pgn,
           createdAt: new Date(log.deleted_at).getTime(),
+          leadingSide: "random",
         }
 
         const { error: insertError } = await supabase.from("openings").upsert({
@@ -1095,6 +1111,7 @@ supabase.auth
           name: o.name,
           description: o.description,
           pgn: o.pgn,
+          leading_side: o.leadingSide ?? "random",
           created_at: new Date(o.createdAt).toISOString(),
         })
         .eq("id", o.id)
@@ -1124,6 +1141,7 @@ function handleStart(config: SessionConfig) {
   const session = buildSession(pool, {
     count: config.count,
     advanced: isAdvanced,
+    color: config.color,  // передаём сторону для фильтрации
   })
   if (session.length === 0) return
   setStartOpen(false)
@@ -1131,10 +1149,16 @@ function handleStart(config: SessionConfig) {
   setCollectionOpeningIds(null)
   setGlobalFinishedIds(new Set())
 
+  // "absolute" — случайный выбор стороны для игры при старте
+  const resolvedColor: "white" | "black" | "random" =
+    config.color === "absolute"
+      ? (Math.random() < 0.5 ? "white" : "black")
+      : config.color
+
   setScreenSafe({
     name: "game",
     session,
-    color: config.color,
+    color: resolvedColor,
     mode: config.mode,
     isCustom: false,
     advanced: isAdvanced,
@@ -1183,7 +1207,14 @@ function handleStart(config: SessionConfig) {
   }
 
   function handleStudy(opening: Opening, fromHistory?: boolean) {
-    setScreenSafe({ name: "study", opening, fromHistory })
+    let initialOrientation: "white" | "black"
+    if (opening.leadingSide === "white" || opening.leadingSide === "black") {
+      initialOrientation = opening.leadingSide
+    } else {
+      const finalFen = parsePgn(opening.pgn).finalFen
+      initialOrientation = finalFen.split(" ")[1] === "b" ? "white" : "black"
+    }
+    setScreenSafe({ name: "study", opening, fromHistory, initialOrientation })
   }
 
 function handleStartCollection(openingIds: string[]) {
@@ -1249,6 +1280,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
   const newUnits = buildSession(pool, {
     count: needed,
     advanced: screen.advanced ?? false,
+    color: screen.color,  // передаём цвет для фильтрации по leadingSide
   })
 
   const nextSession: SessionUnit[] = [...failedUnits, ...newUnits]
@@ -1345,6 +1377,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
     <>
       {screen.name === "home" && (
         <HomeScreen
+          onAbsoluteRandom={() => handleAbsoluteRandom()}
           openings={openings}
           collections={collections}
           onAdd={handleAdd}
@@ -1511,6 +1544,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
             const potentialSession = buildSession(pool, {
               count: 1,
               advanced: screen.advanced ?? false,
+              color: screen.color,
             })
             return potentialSession.length > 0
           })()}
@@ -1518,7 +1552,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
       )}
 
       {screen.name === "study" && (
-        <StudyScreen opening={screen.opening} onExit={handleExit} theme={currentTheme} />
+        <StudyScreen opening={screen.opening} onExit={handleExit} theme={currentTheme} initialOrientation={screen.initialOrientation} />
       )}
 
       <AddOpeningDialog

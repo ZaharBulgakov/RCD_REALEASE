@@ -10,6 +10,8 @@ function generateId(): string {
 export const OPENINGS_LIMIT = 1000
 export const COLLECTIONS_LIMIT = 100
 export const COLLECTION_OPENINGS_LIMIT = 100
+export type LeadingSide = "white" | "black" | "random"
+export type AbsoluteRandomMode = "absolute"
 
 export type Opening = {
   id: string
@@ -17,6 +19,7 @@ export type Opening = {
   description: string
   pgn: string
   createdAt: number
+  leadingSide: LeadingSide
 }
 
 export type Collection = {
@@ -141,6 +144,7 @@ export function buildSeedOpenings(): Opening[] {
         "Классический открытый дебют. Белые быстро выводят коня и слоника на атакующие позиции, готовя давление на пункт f7.",
       pgn: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4",
       createdAt: Date.now() - 4000,
+      leadingSide: "random",
     },
     {
       id: generateId(),
@@ -149,6 +153,7 @@ export function buildSeedOpenings(): Opening[] {
         "Один из старейших дебютов. Слон на b5 оказывает давление на коня c6, готовясь к стратегической борьбе в центре.",
       pgn: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O",
       createdAt: Date.now() - 3000,
+      leadingSide: "random",
     },
     {
       id: generateId(),
@@ -157,6 +162,7 @@ export function buildSeedOpenings(): Opening[] {
         "Самый популярный ответ чёрных на 1.e4. Асимметричная структура ведёт к острой и динамичной борьбе.",
       pgn: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6",
       createdAt: Date.now() - 2000,
+      leadingSide: "random",
     },
     {
       id: generateId(),
@@ -165,6 +171,7 @@ export function buildSeedOpenings(): Opening[] {
         "Белые предлагают пешку c4 в обмен на контроль центра. Классический позиционный дебют уровня чемпионатов мира.",
       pgn: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Be7",
       createdAt: Date.now() - 1000,
+      leadingSide: "random",
     },
     {
       id: generateId(),
@@ -173,6 +180,7 @@ export function buildSeedOpenings(): Opening[] {
         "Солидный ответ чёрных. Пешечная цепь d5-e6 создаёт прочную крепость, из которой чёрные готовят контрудар.",
       pgn: "1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5",
       createdAt: Date.now(),
+      leadingSide: "random",
     },
   ]
 }
@@ -286,16 +294,30 @@ export function countMaxPairs(openings: Opening[]): number {
  */
 export function buildSession(
   openings: Opening[],
-  config: { count: number; advanced: boolean },
+  config: {
+    count: number
+    advanced: boolean
+    color: "white" | "black" | "random" | "absolute"
+  },
 ): SessionUnit[] {
+  const filtered = filterOpeningsByLeadingSide(openings, config.color)
+
   if (config.advanced) {
-    const pairs = findOpeningPairs(openings, config.count)
+    const pairs = findOpeningPairs(filtered, config.count)
     return pairs.map<SessionUnit>((p) => ({
       kind: "pair",
       short: p.short,
       long: p.long,
     }))
   }
-  const singles = pickRandomSession(openings, config.count)
+  const singles = pickRandomSession(filtered, config.count)
   return singles.map<SessionUnit>((o) => ({ kind: "single", opening: o }))
+}
+
+export function filterOpeningsByLeadingSide(
+  openings: Opening[],
+  color: "white" | "black" | "random" | "absolute",
+): Opening[] {
+  if (color === "absolute") return openings
+  return openings.filter((o) => o.leadingSide === color)
 }
