@@ -6,6 +6,7 @@ import { getStyles } from "@/lib/styles"
 import {
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   LogOut,
   CheckCircle2,
   XCircle,
@@ -541,11 +542,11 @@ function handleContinue() {
     isPair && phase === "short" ? "1/2" : isPair && phase === "long" ? "2/2" : null
 
   return (
-    <div className="screen-in flex min-h-dvh flex-col bg-background">
-      {/* Top header */}
+    <div className="screen-in flex h-dvh flex-col bg-background">
+      {/* Top header - title only, centered */}
       <header className="border-b border-border bg-card/40 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-center px-4 py-3">
+          <div className="flex flex-col items-center text-center">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {progressLabel}
             </span>
@@ -553,300 +554,264 @@ function handleContinue() {
               {currentOpening.name}
             </h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {isPair && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent">
-                <Link2 className="h-3.5 w-3.5" />
-                Пара • Часть {pairPart}
-              </span>
-            )}
-            <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
-              Играете за {color === "white" ? "белых" : color === "black" ? "чёрных" : "случайный цвет"}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
-              Ход {displayMoveNum} / {parsed.moves.length}
-            </span>
-          </div>
         </div>
       </header>
 
       {/* Main body */}
-      <main className="flex-1">
-        <div className="mx-auto grid h-[calc(84vh-64px)] max-w-[1100px] gap-6 px-6 py-6 lg:grid-cols-[minmax(0,auto)_minmax(340px,420px)]">
-          {/* Left: Board & Collapsible Panels */}
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col items-center gap-3">
-              <div
-                key={transitionKey}
-                ref={boardContainerRef}
-                className="screen-in relative w-full overflow-hidden rounded-xl border border-border bg-card p-3 shadow-lg shadow-black/30"
-                style={{ boxShadow: `0 0 0 0px color-mix(in srgb, var(--primary) 35%, transparent), 0 0 100px 15px ${theme.systemDesign?.cardGlow ?? "transparent"}` }}
-              >
-                <BoardWithCoords
-                  orientation={playerColor}
-                  boardLight={theme.systemDesign?.boardLight}
-                  boardDark={theme.systemDesign?.boardDark}
-                  options={{
-                    id: `game-${unit.kind === "pair" ? unit.short.id + "-" + unit.long.id : unit.opening.id}`,
-                    position: fen,
-                    onPieceDrop,
-                    animationDurationInMs: 260,
-                    showAnimations: true,
-                    allowDragging: status === "playing" && !promotionData,
-                    boardStyle: { width: "100%", height: "100%" },
-                  }}
-                />
+      <main className="relative flex min-h-0 flex-1 items-stretch">
 
-                {/* Promotion selection overlay */}
-                {promotionData && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                    <div className="flex flex-col items-center gap-4 rounded-2xl bg-card p-6 shadow-2xl border border-border">
-                      <span className="text-sm font-bold text-foreground">Выберите фигуру</span>
-                      <div className="flex gap-3">
-                        {[
-                          { id: "q", label: "Ферзь", icon: "♕" },
-                          { id: "r", label: "Ладья", icon: "♖" },
-                          { id: "b", label: "Слон", icon: "♗" },
-                          { id: "n", label: "Конь", icon: "♘" },
-                        ].map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => handlePromotionSelect(p.id as any)}
-                            className="flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-background text-4xl transition hover:border-accent hover:bg-accent/10 hover:text-accent active:scale-95"
-                            title={p.label}
-                          >
-                            {p.icon}
-                          </button>
-                        ))}
-                      </div>
-                      <button 
-                        onClick={() => setPromotionData(null)}
-                        className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-4"
+        {/* LEFT DRAWER: PGN */}
+        <div className="relative flex items-stretch z-20">
+          {/* Panel */}
+          <div
+            className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
+            style={{
+              width: pgnOpen ? "260px" : "0px",
+              opacity: pgnOpen ? 1 : 0,
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              backgroundColor: "color-mix(in srgb, var(--card) 75%, transparent)",
+              borderRight: pgnOpen ? "1px solid var(--border)" : "none",
+            }}
+          >
+            <div
+              className="shrink-0 grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 border-b border-border px-3 py-3 font-mono text-[11px] font-semibold uppercase tracking-wider"
+              style={{ backgroundColor: "var(--muted)" }}
+            >
+              <span>№</span>
+              <span>Бел</span>
+              <span>Чёр</span>
+            </div>
+            <div className="flex-1 overflow-y-auto min-w-[260px]">
+              {parsed.moves.length === 0 ? (
+                <div className="p-4 font-mono text-xs text-muted-foreground">PGN пуст.</div>
+              ) : (
+                <ol className="divide-y divide-border/60">
+                  {Array.from({ length: Math.ceil(parsed.moves.length / 2) }).map((_, row) => {
+                    const wIdx = row * 2
+                    const bIdx = row * 2 + 1
+                    const whiteMove = parsed.moves[wIdx]
+                    const blackMove = parsed.moves[bIdx]
+                    const whitePlayed = wIdx < moveIdx
+                    const blackPlayed = bIdx < moveIdx
+                    const whiteIsCurrent = wIdx === moveIdx && status === "playing"
+                    const blackIsCurrent = bIdx === moveIdx && status === "playing"
+                    return (
+                      <li key={row} className="grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 px-3 py-2 font-mono tabular-nums">
+                        <span className="text-muted-foreground text-xs">{row + 1}.</span>
+                        <span className={`truncate text-xs ${whitePlayed ? "font-semibold text-accent" : whiteIsCurrent ? "-mx-1 rounded bg-accent/15 px-1 text-accent" : "text-card-foreground"}`}>
+                          {whiteMove ?? ""}
+                        </span>
+                        <span className={`truncate text-xs ${blackPlayed ? "font-semibold text-accent" : blackIsCurrent ? "-mx-1 rounded bg-accent/15 px-1 text-accent" : blackMove ? "text-card-foreground" : "text-muted-foreground/60"}`}>
+                          {blackMove ?? "—"}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
+            </div>
+          </div>
+          {/* Tab */}
+          <button
+            type="button"
+            onClick={() => setPgnOpen(o => !o)}
+            className="absolute top-1/2 -translate-y-1/2 -right-8 z-30 flex h-16 w-8 flex-col items-center justify-center gap-1 rounded-r-xl border border-l-0 border-border text-muted-foreground transition hover:text-foreground"
+            style={{
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              backgroundColor: "color-mix(in srgb, var(--card) 75%, transparent)",
+            }}
+            aria-label="Ходы"
+          >
+            {pgnOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ writingMode: "vertical-rl" }}>PGN</span>
+          </button>
+        </div>
+
+        {/* CENTER: Board - flex-1 spacer + absolute board centered in main */}
+        <div className="relative flex flex-1 min-h-0">
+          {/* Badges - absolute to main, never shift horizontally */}
+          <div className="absolute top-3 left-0 right-0 z-10 flex justify-center px-4 pointer-events-none">
+            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
+              {isPair && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent backdrop-blur-sm">
+                  <Link2 className="h-3.5 w-3.5" />
+                  Пара • Часть {pairPart}
+                </span>
+              )}
+              <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent backdrop-blur-sm">
+                Играете за {color === "white" ? "белых" : color === "black" ? "чёрных" : "случайный цвет"}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-muted/80 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+                Ход {displayMoveNum} / {parsed.moves.length}
+              </span>
+            </div>
+          </div>
+          {/* Board - absolute centered in this flex-1 cell */}
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+          <div
+            key={transitionKey}
+            ref={boardContainerRef}
+            className="screen-in relative overflow-hidden rounded-xl border border-border bg-card p-3 shadow-lg shadow-black/30"
+            style={{
+              width: "min(100%, calc(100dvh - 200px))",
+              boxShadow: `0 0 0 0px color-mix(in srgb, var(--primary) 35%, transparent), 0 0 100px 15px ${theme.systemDesign?.cardGlow ?? "transparent"}`
+            }}
+          >
+            <BoardWithCoords
+              orientation={playerColor}
+              boardLight={theme.systemDesign?.boardLight}
+              boardDark={theme.systemDesign?.boardDark}
+              options={{
+                id: `game-${unit.kind === "pair" ? unit.short.id + "-" + unit.long.id : unit.opening.id}`,
+                position: fen,
+                onPieceDrop,
+                animationDurationInMs: 260,
+                showAnimations: true,
+                allowDragging: status === "playing" && !promotionData,
+              }}
+            />
+
+            {/* Promotion overlay */}
+            {promotionData && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                <div className="flex flex-col items-center gap-4 rounded-2xl bg-card p-6 shadow-2xl border border-border">
+                  <span className="text-sm font-bold text-foreground">Выберите фигуру</span>
+                  <div className="flex gap-3">
+                    {[
+                      { id: "q", label: "Ферзь", icon: "♕" },
+                      { id: "r", label: "Ладья", icon: "♖" },
+                      { id: "b", label: "Слон", icon: "♗" },
+                      { id: "n", label: "Конь", icon: "♘" },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => handlePromotionSelect(p.id as any)}
+                        className="flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-background text-4xl transition hover:border-accent hover:bg-accent/10 hover:text-accent active:scale-95"
+                        title={p.label}
                       >
-                        Отмена
+                        {p.icon}
                       </button>
-                    </div>
+                    ))}
                   </div>
-                )}
-
-                {/* Pair transition banner — overlays the board briefly */}
-                {pairTransition && (
-                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
-                    <div className="screen-in flex max-w-[92%] flex-col items-center gap-2 rounded-2xl border border-accent/60 bg-background/95 px-6 py-5 text-center shadow-2xl shadow-black/60 backdrop-blur-sm">
-                      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-                        <Link2 className="h-3.5 w-3.5" />
-                        Переход к длинному варианту
-                      </span>
-                      <div className="flex flex-wrap items-center justify-center gap-2 text-sm font-semibold text-foreground md:text-base">
-                        <span className="rounded-md bg-muted px-2 py-0.5">
-                          {pairTransition.from}
-                        </span>
-                        <ArrowRight className="h-4 w-4 text-accent" />
-                        <span className="rounded-md bg-accent/15 px-2 py-0.5 text-accent">
-                          {pairTransition.to}
-                        </span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        Позиция сохранена — продолжайте партию
-                      </span>
-                    </div>
-                  </div>
-                )}
+                  <button
+                    onClick={() => setPromotionData(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition underline underline-offset-4"
+                  >
+                    Отмена
+                  </button>
+                </div>
               </div>
+            )}
 
-              {/* Toast */}
-              <div className="min-h-10">
-                {toast && (
-                  <div className={`screen-in inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
-                    toast.kind === "success"
-                      ? "border-success/40 bg-success/15 text-success"
-                      : "border-error/40 bg-error/15 text-error"
-                  }`}>
-                    {toast.text}
+            {/* Pair transition banner */}
+            {pairTransition && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
+                <div className="screen-in flex max-w-[92%] flex-col items-center gap-2 rounded-2xl border border-accent/60 bg-background/95 px-6 py-5 text-center shadow-2xl shadow-black/60 backdrop-blur-sm">
+                  <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+                    <Link2 className="h-3.5 w-3.5" />
+                    Переход к длинному варианту
+                  </span>
+                  <div className="flex flex-wrap items-center justify-center gap-2 text-sm font-semibold text-foreground md:text-base">
+                    <span className="rounded-md bg-muted px-2 py-0.5">{pairTransition.from}</span>
+                    <ArrowRight className="h-4 w-4 text-accent" />
+                    <span className="rounded-md bg-accent/15 px-2 py-0.5 text-accent">{pairTransition.to}</span>
                   </div>
-                )}
-                {status === "failed" && (
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      type="button"
-                      onClick={handleUndoMove}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold transition hover:bg-accent"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      Отмотать ход
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleContinue}
-                      className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:brightness-110"
-                    >
-                      Продолжить
-                    </button>
-                  </div>
-                )}
+                  <span className="text-xs text-muted-foreground">Позиция сохранена — продолжайте партию</span>
+                </div>
+              </div>
+            )}
+          </div>
+          </div>{/* end absolute board wrapper */}
+
+          {/* Toast */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10">
+            {toast && (
+              <div className={`screen-in inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
+                toast.kind === "success"
+                  ? "border-success/40 bg-success/15 text-success"
+                  : "border-error/40 bg-error/15 text-error"
+              }`}>
+                {toast.text}
+              </div>
+            )}
+            {status === "failed" && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={handleUndoMove}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold transition hover:bg-accent"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Отмотать ход
+                </button>
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:brightness-110"
+                >
+                  Продолжить
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT DRAWER: Description */}
+        <div className="relative flex items-stretch z-20">
+          {/* Tab */}
+          <button
+            type="button"
+            onClick={() => setDescOpen(o => !o)}
+            className="absolute top-1/2 -translate-y-1/2 -left-8 z-30 flex h-16 w-8 flex-col items-center justify-center gap-1 rounded-l-xl border border-r-0 border-border text-muted-foreground transition hover:text-foreground"
+            style={{
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              backgroundColor: "color-mix(in srgb, var(--card) 75%, transparent)",
+            }}
+            aria-label="Описание"
+          >
+            {descOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>Инфо</span>
+          </button>
+          {/* Panel */}
+          <div
+            className="flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
+            style={{
+              width: descOpen ? "340px" : "0px",
+              opacity: descOpen ? 1 : 0,
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              backgroundColor: "color-mix(in srgb, var(--card) 75%, transparent)",
+              borderLeft: descOpen ? "1px solid var(--border)" : "none",
+            }}
+          >
+            <div className="flex-1 overflow-y-auto min-w-[340px] p-6 flex flex-col gap-4">
+              <span className="text-sm font-semibold">Описание</span>
+              <p className="whitespace-pre-wrap text-[15px] leading-7 text-card-foreground">
+                {currentOpening.description || "Для этого дебюта не указано описание."}
+              </p>
+              <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-2">
+                <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                  {parsed.fullMoveCount} полных ходов
+                </span>
+                <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                  {parsed.moves.length} полуходов
+                </span>
               </div>
             </div>
           </div>
-
-          {/* Right: Panels (Collapsible) */}
-          <aside className="flex flex-col gap-4">
-            {/* Description (Always collapsible) */}
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => setDescOpen((o) => !o)}
-                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-5 py-4 text-left transition hover:border-accent/60"
-                aria-expanded={descOpen}
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold">Описание</span>
-                  <span className="text-xs text-muted-foreground">
-                    {descOpen ? "Нажмите чтобы скрыть" : "Нажмите чтобы показать"}
-                  </span>
-                </div>
-                {descOpen ? (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                )}
-              </button>
-
-              <div
-                className={`grid overflow-hidden transition-all duration-300 ${
-                  descOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                }`}
-                style={{ maxHeight: descOpen ? "300px" : "0px" }}
-              >
-                <div className="min-h-0 overflow-hidden">
-                  <div className="flex flex-col gap-4 rounded-xl border border-border bg-card px-6 py-6">
-                    <div className="overflow-y-auto" style={{ maxHeight: "170px" }}>
-                      <p className="screen-in whitespace-pre-wrap text-[15px] leading-7 text-card-foreground">
-                        {currentOpening.description || "Для этого дебюта не указано описание."}
-                      </p>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-2 border-t border-border/60 pt-2">
-                      <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                        {parsed.fullMoveCount} полных ходов
-                      </span>
-                      <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                        {parsed.moves.length} полуходов
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* PGN (Always collapsible) */}
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => setPgnOpen((o) => !o)}
-                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-5 py-4 text-left transition hover:border-accent/60"
-                aria-expanded={pgnOpen}
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold">Скрытый PGN</span>
-                  <span className="text-xs text-muted-foreground">
-                    {pgnOpen ? "Нажмите чтобы скрыть" : "Нажмите чтобы показать"}
-                  </span>
-                </div>
-                {pgnOpen ? (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                )}
-              </button>
-
-              <div
-                className={`grid overflow-hidden transition-all duration-300 ${
-                  pgnOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                }`}
-              >
-                <div className="min-h-0">
-                  <div
-                    key={`pgn-${currentOpening.id}`}
-                    className="screen-in flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card"
-                    style={{ maxHeight: "300px" }}
-                  >
-                    <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-x-6 border-b border-border bg-muted/50 px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span>№</span>
-                      <span>Белые</span>
-                      <span>Чёрные</span>
-                    </div>
-                    <div className="overflow-y-auto" style={{ maxHeight: "200px" }}>
-                      {parsed.moves.length === 0 ? (
-                        <div className="p-5 font-mono text-xs text-muted-foreground">
-                          PGN пуст.
-                        </div>
-                      ) : (
-                        <ol className="divide-y divide-border/60">
-                          {Array.from({ length: Math.ceil(parsed.moves.length / 2) }).map(
-                            (_, row) => {
-                              const wIdx = row * 2
-                              const bIdx = row * 2 + 1
-                              const whiteMove = parsed.moves[wIdx]
-                              const blackMove = parsed.moves[bIdx]
-                              const whitePlayed = wIdx < moveIdx
-                              const blackPlayed = bIdx < moveIdx
-                              const whiteIsCurrent =
-                                wIdx === moveIdx && status === "playing"
-                              const blackIsCurrent =
-                                bIdx === moveIdx && status === "playing"
-                              return (
-                                <li
-                                  key={row}
-                                  className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-6 px-5 py-2 font-mono text-sm tabular-nums"
-                                >
-                                  <span className="text-muted-foreground">
-                                    {row + 1}.
-                                  </span>
-                                  <span
-                                    className={`truncate ${
-                                      whitePlayed
-                                        ? "font-semibold text-accent"
-                                        : whiteIsCurrent
-                                          ? "-mx-1 rounded bg-accent/15 px-1 text-accent"
-                                          : "text-card-foreground"
-                                    }`}
-                                  >
-                                    {whiteMove ?? ""}
-                                  </span>
-                                  <span
-                                    className={`truncate ${
-                                      blackPlayed
-                                        ? "font-semibold text-accent"
-                                        : blackIsCurrent
-                                          ? "-mx-1 rounded bg-accent/15 px-1 text-accent"
-                                          : blackMove
-                                            ? "text-card-foreground"
-                                            : "text-muted-foreground/60"
-                                    }`}
-                                  >
-                                    {blackMove ?? "—"}
-                                  </span>
-                                </li>
-                              )
-                            },
-                          )}
-                        </ol>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
         </div>
+
       </main>
 
-      {/* Exit button - bottom left */}
-      <div className="sticky bottom-0 left-0 z-10 mt-auto p-4">
+      {/* Exit button - fixed bottom left */}
+      <div className="fixed bottom-4 left-4 z-30">
         <button
           type="button"
           onClick={() => setExitConfirm(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-error/60 bg-error px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/20 transition
-            hover:brightness-110"
+          className="inline-flex items-center gap-2 rounded-full border border-error/60 bg-error px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
         >
           <LogOut className="h-4 w-4" />
           Выйти

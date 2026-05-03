@@ -342,7 +342,7 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
 
       {/* Body */}
       <main className="flex-1">
-        <div className="mx-auto grid max-w-[1400px] gap-6 px-4 py-6 lg:grid-cols-[minmax(300px,340px)_minmax(0,1fr)_minmax(340px,400px)]">
+        <div className="mx-auto grid max-w-[1400px] gap-6 px-4 py-6 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)_minmax(280px,340px)]">
           {/* Left: description */}
           <aside className="order-2 min-w-0 lg:order-1">
             <div className="sticky top-6 flex min-w-[300px] flex-col gap-4 rounded-xl border border-border bg-card px-6 py-6">
@@ -509,7 +509,7 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
 
           {/* Right: moves table */}
           <aside className="order-3 min-w-0">
-            <div className="sticky top-6 flex min-w-[340px] flex-col gap-3">
+            <div className="sticky top-6 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-5 py-4">
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold">Ходы дебюта</span>

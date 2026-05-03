@@ -73,6 +73,7 @@ export function BoardWithCoords({ options, orientation, boardLight, boardDark }:
               boardOrientation: orientation,
               position: options?.position || "start",
               showNotation: false,
+              boardStyle: { width: `${boardWidth}px`, height: `${boardWidth}px`, ...options?.boardStyle },
               darkSquareStyle: { backgroundColor: boardDark ?? "var(--board-dark)" },
               lightSquareStyle: { backgroundColor: boardLight ?? "var(--board-light)" },
               onPieceDrop: options?.onPieceDrop,

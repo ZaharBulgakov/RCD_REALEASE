@@ -224,21 +224,19 @@ export function OpeningCard({
         onMouseUp={handleMouseUp}
         {...touchHandlers}
       >
-        <div className="absolute inset-0 select-none flex items-center justify-center pointer-events-none">
-          <div className="w-full h-full">
-            <BoardWithCoords
-              orientation={boardOrientation}
-              boardLight={theme.systemDesign?.boardLight}
-              boardDark={theme.systemDesign?.boardDark}
-              options={{
-                id: `preview-${opening.id}`,
-                position: parsed.finalFen,
-                allowDragging: false,
-                showAnimations: false,
-                boardStyle: {},
-              }}
-            />
-          </div>
+        <div className="w-full h-full select-none pointer-events-none">
+          <BoardWithCoords
+            orientation={boardOrientation}
+            boardLight={theme.systemDesign?.boardLight}
+            boardDark={theme.systemDesign?.boardDark}
+            options={{
+              id: `preview-${opening.id}`,
+              position: parsed.finalFen,
+              allowDragging: false,
+              showAnimations: false,
+              boardStyle: { width: "100%", aspectRatio: "1" },
+            }}
+          />
         </div>
 
         {/* Action buttons */}
