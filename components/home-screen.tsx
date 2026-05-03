@@ -340,7 +340,7 @@ const ThemeIcon = currentTheme.icon
   style={{ borderBottom: `1px solid ${s.accent}` }}
 >
       
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setActiveCollectionId(null)}
@@ -449,7 +449,7 @@ const ThemeIcon = currentTheme.icon
       </header>
 
       {/* КАРТОЧКА ГЛАВНОЕ МЕНЮ */}
-      <main className="mx-auto max-w-6xl px-4 pb-6 pt-20 md:pb-10 md:pt-24"
+      <main className="mx-auto max-w-5xl px-6 pb-6 pt-20 md:pb-10 md:pt-24"
       style={accentGlow}>
         
         {!activeCollectionId && (
@@ -567,7 +567,7 @@ const ThemeIcon = currentTheme.icon
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               {sortedCollections.slice(0, visibleCollectionsCount).map((collection) => {
                 
                 const validCount = collection.openingIds.filter(id => openings.some(o => o.id === id)).length
@@ -974,7 +974,7 @@ const ThemeIcon = currentTheme.icon
                 </span>
               </h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               {visibleOpenings.map((opening) => (
                 <OpeningCard
                   key={opening.id}

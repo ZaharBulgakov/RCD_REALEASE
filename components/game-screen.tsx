@@ -572,14 +572,14 @@ function handleContinue() {
 
       {/* Main body */}
       <main className="flex-1">
-        <div className="mx-auto grid max-w-[1400px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]">
+        <div className="mx-auto grid h-[calc(84vh-64px)] max-w-[1100px] gap-6 px-6 py-6 lg:grid-cols-[minmax(0,auto)_minmax(340px,420px)]">
           {/* Left: Board & Collapsible Panels */}
           <div className="flex flex-col gap-6">
             <div className="flex flex-col items-center gap-3">
               <div
                 key={transitionKey}
                 ref={boardContainerRef}
-                className="screen-in relative w-full overflow-hidden rounded-xl border border-border bg-card p-3 shadow-lg shadow-black/30 lg:max-w-[700px]"
+                className="screen-in relative w-full overflow-hidden rounded-xl border border-border bg-card p-3 shadow-lg shadow-black/30"
                 style={{ boxShadow: `0 0 0 0px color-mix(in srgb, var(--primary) 35%, transparent), 0 0 100px 15px ${theme.systemDesign?.cardGlow ?? "transparent"}` }}
               >
                 <BoardWithCoords
@@ -715,12 +715,15 @@ function handleContinue() {
                 className={`grid overflow-hidden transition-all duration-300 ${
                   descOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
+                style={{ maxHeight: descOpen ? "300px" : "0px" }}
               >
-                <div className="min-h-0">
+                <div className="min-h-0 overflow-hidden">
                   <div className="flex flex-col gap-4 rounded-xl border border-border bg-card px-6 py-6">
-                    <p className="screen-in whitespace-pre-wrap text-[15px] leading-7 text-card-foreground">
-                      {currentOpening.description || "Для этого дебюта не указано описание."}
-                    </p>
+                    <div className="overflow-y-auto" style={{ maxHeight: "170px" }}>
+                      <p className="screen-in whitespace-pre-wrap text-[15px] leading-7 text-card-foreground">
+                        {currentOpening.description || "Для этого дебюта не указано описание."}
+                      </p>
+                    </div>
                     <div className="mt-1 flex flex-wrap gap-2 border-t border-border/60 pt-2">
                       <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium">
                         {parsed.fullMoveCount} полных ходов
@@ -764,15 +767,14 @@ function handleContinue() {
                   <div
                     key={`pgn-${currentOpening.id}`}
                     className="screen-in flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card"
-                    style={boardHeight ? { height: boardHeight } : { maxHeight: 520 }}
+                    style={{ maxHeight: "300px" }}
                   >
-                    <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-x-6 border-b border-border px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-wider"
-                        style={{ backgroundColor: s.accent }}>
+                    <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-x-6 border-b border-border bg-muted/50 px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <span>№</span>
                       <span>Белые</span>
                       <span>Чёрные</span>
                     </div>
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="overflow-y-auto" style={{ maxHeight: "200px" }}>
                       {parsed.moves.length === 0 ? (
                         <div className="p-5 font-mono text-xs text-muted-foreground">
                           PGN пуст.

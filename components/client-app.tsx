@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { HomeScreen } from "./home-screen"
 import { AddOpeningDialog } from "./add-opening-dialog"
 import { DeletionHistoryDialog } from "./deletion-history-dialog"
-import { StartSessionDialog, type SessionConfig } from "./start-session-dialog"
+import { StartSessionDialog, AbsoluteRandomDialog, type SessionConfig } from "./start-session-dialog"
 import { CustomSessionDialog, type CustomSessionConfig } from "./custom-session-dialog"
 import { GameScreen } from "./game-screen"
 import { NameGameScreen } from "./name-game-screen"
@@ -94,6 +94,7 @@ export function ClientApp() {
   const [editingOpening, setEditingOpening] = useState<Opening | null>(null)
   const [startOpen, setStartOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
+  const [absoluteOpen, setAbsoluteOpen] = useState(false)
   const [customInitialSelection, setCustomInitialSelection] = useState<string[]>([])
   const [scoreEnabled, setScoreEnabled] = useState(true)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -288,14 +289,7 @@ supabase.auth
   }
 
   function handleAbsoluteRandom() {
-    // Запускаем диалог старта — внутри пользователь видит сторону "absolute"
-    // уже предвыбранной через defaultColor (см. StartSessionDialog)
-    handleStart({
-      color: "absolute",
-      count: Math.min(3, openings.length) || 1,
-      advanced: false,
-      mode: "moves",
-    })
+    setAbsoluteOpen(true)
   }
 
   function clearLegacyLocalStorageOnce(userId: string) {
@@ -1578,6 +1572,15 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
         onOpenChange={setStartOpen}
         openings={openings}
         onStart={handleStart}
+        isSaving={isSaving}
+      />
+
+      <AbsoluteRandomDialog
+        currentTheme={currentTheme}
+        open={absoluteOpen}
+        onOpenChange={setAbsoluteOpen}
+        openings={openings}
+        onStart={(count) => handleStart({ color: "absolute", count, advanced: false, mode: "moves" })}
         isSaving={isSaving}
       />
 

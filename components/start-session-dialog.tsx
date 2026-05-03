@@ -101,21 +101,18 @@ export function StartSessionDialog({
     setColor("white")
     setMode("moves")
     setAdvanced(false)
-    setCount(Math.min(3, Math.max(1, openings.length)))
-  }, [open, openings.length])
+  }, [open])
 
-  // Re-clamp count when color/mode changes
+  // Set count to max when color/mode/advanced changes
   useEffect(() => {
-    setCount((prev) => {
-      const effectiveMax =
-        mode === "moves"
-          ? advanced
-            ? Math.max(1, maxPairs)
-            : Math.max(1, maxSingles)
+    const effectiveMax =
+      mode === "moves"
+        ? advanced
+          ? Math.max(1, maxPairs)
           : Math.max(1, maxSingles)
-      return Math.min(Math.max(prev, 1), effectiveMax)
-    })
-  }, [advanced, maxPairs, maxSingles, mode, color])
+        : Math.max(1, maxSingles)
+    setCount(effectiveMax)
+  }, [advanced, maxPairs, maxSingles, mode, color, open])
 
   useEffect(() => {
     if (mode !== "names") return
@@ -306,6 +303,102 @@ export function StartSessionDialog({
               type="button"
               onClick={handleStart}
               disabled={disabled || isSaving}
+              className="h-10 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition
+                hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 shadow-md shadow-primary/20"
+            >
+              Старт
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+type AbsoluteRandomDialogProps = {
+  currentTheme: ChessTheme
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  openings: Opening[]
+  onStart: (count: number) => void
+  isSaving?: boolean
+}
+
+export function AbsoluteRandomDialog({
+  currentTheme,
+  open,
+  onOpenChange,
+  openings,
+  onStart,
+  isSaving = false,
+}: AbsoluteRandomDialogProps) {
+  const s = getStyles(currentTheme)
+  const accentGlow = {
+    boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}`,
+  }
+
+  const max = Math.max(1, openings.length)
+  const [count, setCount] = useState<number>(max)
+
+  useEffect(() => {
+    if (!open) return
+    setCount(Math.max(1, openings.length))
+  }, [open, openings.length])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm" style={accentGlow}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Shuffle className="h-4 w-4" />
+            Абсолютный рандом
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Сторона и дебюты выбираются случайно из всей базы.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="abs-count" className="text-sm font-medium">
+              Количество дебютов
+            </label>
+            <input
+              id="abs-count"
+              type="number"
+              min={1}
+              max={max}
+              value={count}
+              disabled={isSaving}
+              onChange={(e) => {
+                const v = Number.parseInt(e.target.value, 10)
+                if (Number.isNaN(v)) setCount(1)
+                else setCount(Math.min(Math.max(v, 1), max))
+              }}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition
+                focus:border-ring focus:ring-2 focus:ring-ring/40 disabled:opacity-50"
+            />
+            <p className="text-xs text-muted-foreground">
+              Доступно в базе:{" "}
+              <span className="font-medium text-foreground">{max}</span>.
+              Дебюты не повторяются.
+            </p>
+          </div>
+
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              disabled={isSaving}
+              className="h-10 rounded-md border border-border bg-transparent px-4 text-sm font-medium transition
+                hover:bg-accent disabled:opacity-50"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={() => { onStart(Math.min(Math.max(count, 1), max)); onOpenChange(false) }}
+              disabled={max === 0 || isSaving}
               className="h-10 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition
                 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 shadow-md shadow-primary/20"
             >
