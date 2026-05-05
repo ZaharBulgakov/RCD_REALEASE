@@ -156,12 +156,12 @@ export function OpeningDetailScreen({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/50 px-6 backdrop-blur-md z-50">
-        <Button variant="ghost" onClick={onBack} className="gap-2 rounded-xl font-bold uppercase tracking-widest">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/50 px-3 sm:px-6 backdrop-blur-md z-50">
+        <Button variant="ghost" onClick={onBack} className="gap-1 sm:gap-2 rounded-xl font-bold uppercase tracking-widest px-2 sm:px-4 text-xs sm:text-sm">
           <ArrowLeft className="h-5 w-5" />
           Назад
         </Button>
-        <h1 className="text-xl font-black tracking-[0.3em] text-primary sm:text-2xl">
+        <h1 className="text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
           {opening.name.toUpperCase()}
         </h1>
         <div className="w-24" />
@@ -169,13 +169,13 @@ export function OpeningDetailScreen({
 
       <div className="flex flex-1 overflow-hidden">
         {/* ЦЕНТРАЛЬНАЯ ОБЛАСТЬ */}
-        <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-accent/5">
+        <main className="relative flex flex-1 flex-col overflow-hidden bg-accent/5">
 
           {/* Кнопка "Добавить" — z-30, всегда поверх карусели */}
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
             <Button
               onClick={() => setAddDialogOpen(true)}
-              className="h-10 rounded-full px-6 text-xs font-bold uppercase tracking-widest"
+              className="h-8 sm:h-10 rounded-full px-3 sm:px-6 text-[10px] sm:text-xs font-bold uppercase tracking-widest"
               style={accentGlow}
             >
               <Plus className="mr-2 h-3.5 w-3.5" />
@@ -183,9 +183,9 @@ export function OpeningDetailScreen({
             </Button>
           </div>
 
-          {/* Карусель */}
+          {/* Карусель — только на десктопе */}
           <div
-            className="relative flex items-center justify-center"
+            className="relative hidden sm:flex items-center justify-center"
             style={{ width: CAROUSEL_SIZE, height: CAROUSEL_SIZE }}
           >
             {/*
@@ -311,8 +311,8 @@ export function OpeningDetailScreen({
             </div>
           </div>
 
-          {/* Поиск снизу */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-6">
+          {/* Поиск снизу — только на десктопе */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-6 hidden sm:block">
             <div className="group relative w-full">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
               <input
@@ -325,7 +325,76 @@ export function OpeningDetailScreen({
               />
             </div>
           </div>
+
+          {/* Мобильный список миттельшпилей — только на мобильном */}
+          <div className="flex flex-1 flex-col overflow-hidden sm:hidden">
+            {/* Центральный дебют */}
+            <div className="shrink-0 px-4 pt-12 pb-2">
+              <div style={{ ...accentGlow, borderRadius: 12 }}>
+                <OpeningCard
+                  opening={opening}
+                  onDelete={async () => setDeleteId(opening.id)}
+                  onEdit={onEdit}
+                  onStudy={() => setSelectedMittelspiel(null)}
+                  theme={currentTheme}
+                  isSaving={isSaving}
+                  isSelected={isMainOpening}
+                />
+              </div>
+            </div>
+            {/* Линия-разделитель */}
+            {filteredMittelspiels.length > 0 && (
+              <div className="flex items-center gap-3 px-4 py-2 shrink-0">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Миттельшпили ({filteredMittelspiels.length})
+                </span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+            )}
+            {/* Список миттельшпилей */}
+            <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-3">
+              {filteredMittelspiels.map((m) => {
+                const isSelected = selectedMittelspiel?.id === m.id
+                return (
+                  <div key={m.id} style={isSelected ? accentGlow : undefined} className="rounded-xl">
+                    <OpeningCard
+                      opening={m}
+                      onDelete={async () => setDeleteId(m.id)}
+                      onEdit={onEdit}
+                      onStudy={() => setSelectedMittelspiel(m)}
+                      theme={currentTheme}
+                      isSaving={isSaving}
+                      isSelected={isSelected}
+                    />
+                  </div>
+                )
+              })}
+              {filteredMittelspiels.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                  <p className="text-sm">Нет миттельшпилей</p>
+                  <p className="text-xs mt-1">Нажмите «+» чтобы добавить</p>
+                </div>
+              )}
+            </div>
+          </div>
+
         </main>
+
+        {/* Мобильная нижняя панель с поиском */}
+        <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card/80 px-4 py-3 backdrop-blur-md sm:hidden">
+          <div className="group relative w-full">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Поиск миттельшпилей..."
+              className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-4 text-sm outline-none transition focus:border-primary"
+              style={accentGlow}
+            />
+          </div>
+        </div>
 
         {/* ПРАВАЯ ПАНЕЛЬ */}
         <aside className="hidden w-96 flex-col border-l border-border bg-card/20 md:flex shrink-0">

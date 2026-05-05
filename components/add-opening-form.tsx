@@ -583,7 +583,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
         <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-4 md:gap-6 md:items-start">
 
           {/* LEFT COLUMN: Name, Description, LeadingSide, PGN text field */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 order-2 md:order-1">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="opening-name" className="text-sm font-semibold text-foreground/80 ml-1">
                 Название <span className="text-[10px] font-normal text-muted-foreground ml-1">({name.length}/100)</span>
@@ -631,7 +631,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
                 disabled={isSaving || loading}
                 rows={2}
                 className="rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition
-                  resize-none shadow-sm overflow-y-auto max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  resize-none shadow-sm overflow-y-auto max-h-[80px] md:max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={s ? { ...(focusedField === "description" ? s.inputFocus : s.input), boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}` } : {}}
               />
             </div>
@@ -710,7 +710,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
           </div>{/* end left column */}
 
           {/* RIGHT COLUMN: Board only */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 order-1 md:order-2">
             <div className="relative w-full flex flex-col gap-3">
               <div className="relative w-full rounded-lg border border-border">
                 <BoardWithCoords

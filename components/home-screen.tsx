@@ -254,7 +254,7 @@ export function HomeScreen({
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
       <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-card/50 backdrop-blur-md z-50">
-        <h1 className="text-xl font-black tracking-[0.3em] text-primary sm:text-2xl">
+        <h1 className="text-base font-black tracking-[0.2em] text-primary sm:text-xl md:text-2xl">
           RANDOM CHESS DEBUT
         </h1>
       </header>
@@ -311,11 +311,11 @@ export function HomeScreen({
         {/* ЦЕНТРАЛЬНАЯ ЧАСТЬ: ЛЕНТА ДЕБЮТОВ */}
         <main className="relative flex flex-1 flex-col overflow-hidden bg-accent/5">
           {/* Верхние кнопки управления */}
-          <div className="flex items-center justify-center gap-4 p-6 shrink-0">
+          <div className="flex items-center justify-center gap-2 px-4 py-3 sm:gap-4 sm:p-6 shrink-0">
             <Button 
               onClick={onStart} 
               disabled={openings.length === 0}
-              className="h-12 rounded-full px-8 text-sm font-bold uppercase tracking-widest"
+              className="h-10 sm:h-12 rounded-full px-5 sm:px-8 text-xs sm:text-sm font-bold uppercase tracking-widest"
               style={accentGlow}
             >
               <Play className="mr-2 h-4 w-4 fill-current" />
@@ -324,7 +324,7 @@ export function HomeScreen({
             <Button 
               variant="secondary"
               onClick={() => setAddDialogOpen(true)}
-              className="h-12 rounded-full px-8 text-sm font-bold uppercase tracking-widest"
+              className="h-10 sm:h-12 rounded-full px-5 sm:px-8 text-xs sm:text-sm font-bold uppercase tracking-widest"
               style={accentGlow}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -348,7 +348,7 @@ export function HomeScreen({
               <div className="embla__container flex">
                 {displayOpenings.length > 0 ? (
                   displayOpenings.map((opening) => (
-                    <div key={opening.id} className="embla__slide min-w-0 flex-[0_0_280px] px-4 py-8 sm:flex-[0_0_320px] md:flex-[0_0_360px]">
+                    <div key={opening.id} className="embla__slide min-w-0 flex-[0_0_220px] px-2 py-4 sm:flex-[0_0_280px] sm:px-4 sm:py-8 md:flex-[0_0_320px]">
                       <div className="transition-transform duration-300 hover:scale-105 active:scale-95">
                         <OpeningCard
                           opening={opening}
@@ -379,7 +379,7 @@ export function HomeScreen({
           </div>
 
           {/* Поиск внизу */}
-          <div className="flex w-full items-center justify-center p-8 shrink-0">
+          <div className="flex w-full items-center justify-center px-4 py-3 sm:p-8 shrink-0">
             <div className="group relative w-full max-w-xl">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
               <input
@@ -387,7 +387,7 @@ export function HomeScreen({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={activeCollectionId ? "Поиск в коллекции..." : "Поиск по всей библиотеке..."}
-                className="h-14 w-full rounded-full border border-border bg-card pl-12 pr-6 text-base outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
+                className="h-11 sm:h-14 w-full rounded-full border border-border bg-card pl-11 sm:pl-12 pr-4 sm:pr-6 text-sm sm:text-base outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
                 style={accentGlow}
               />
             </div>
@@ -520,6 +520,38 @@ export function HomeScreen({
             </div>
           </ScrollArea>
         </aside>
+      </div>
+
+      {/* Мобильная нижняя панель — видна только на мобильном */}
+      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-4 py-2 backdrop-blur-md md:hidden">
+        <button
+          onClick={() => setHistoryOpen(true)}
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
+        >
+          <History className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">История</span>
+        </button>
+        <button
+          onClick={() => setThemeDialogOpen(true)}
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
+        >
+          <Paintbrush className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Тема</span>
+        </button>
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
+        >
+          <MessageSquare className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Фидбек</span>
+        </button>
+        <button
+          onClick={onLogout}
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-error"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Выйти</span>
+        </button>
       </div>
 
       {/* Модальные окна */}
