@@ -11,16 +11,18 @@ type Props = {
   onOpenChange: (open: boolean) => void
   onSave: (opening: Opening) => Promise<string | null>
   initialOpening?: Opening | null
+  parentPgn?: string
+  parentId?: string
   isSaving?: boolean
   currentTheme?: ChessTheme
 }
 
-export function AddOpeningDialog({ open, onOpenChange, onSave, initialOpening, isSaving = false, currentTheme }: Props) {
+export function AddOpeningDialog({ open, onOpenChange, onSave, initialOpening, parentPgn, parentId, isSaving = false, currentTheme }: Props) {
   const isEditMode = Boolean(initialOpening)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(420px,calc(100vw-1rem))] max-w-none p-0 bg-card border-border rounded-2xl shadow-2xl max-h-[95vh] overflow-y-auto overflow-x-hidden">
+      <DialogContent className="dialog-wide p-0 bg-card border-border rounded-2xl shadow-2xl overflow-x-hidden">
         <VisuallyHidden>
           <DialogTitle>
             {isEditMode ? "Редактировать дебют" : "Добавить новый дебют"}
@@ -30,6 +32,8 @@ export function AddOpeningDialog({ open, onOpenChange, onSave, initialOpening, i
           <AddOpeningForm
             onSave={onSave}
             initialOpening={initialOpening}
+            parentPgn={parentPgn}
+            parentId={parentId}
             onCancel={() => onOpenChange(false)}
             isSaving={isSaving}
             currentTheme={currentTheme}

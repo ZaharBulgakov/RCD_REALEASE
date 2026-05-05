@@ -111,10 +111,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -127,6 +126,19 @@
   --color-success-foreground: var(--success-foreground);
   --color-error: var(--error);
   --color-error-foreground: var(--error-foreground);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  @keyframes slow-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes slow-spin-reverse {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+  --animation-slow-spin: slow-spin 60s linear infinite;
+  --animation-slow-spin-reverse: slow-spin-reverse 60s linear infinite;
 }
 
 @layer base {
@@ -180,4 +192,9 @@
       0 0 0 1px var(--primary),
       0 0 14px 2px var(--card-glow, transparent);
   }
+}
+/* Force AddOpeningDialog to be wide */
+[data-slot="dialog-content"].dialog-wide {
+  width: min(1040px, calc(100vw - 2rem)) !important;
+  max-width: none !important;
 }

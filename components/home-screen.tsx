@@ -1,23 +1,32 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Plus, Play, Search, Swords, Zap, Headset, UserCircle2, LogOut, Gamepad2, Moon, SortAsc, Calendar, LayoutGrid, AlertTriangle, Trash2, Clock, History, RotateCcw, Check, X, FolderPlus, Folder, MoreVertical, Edit2, PlayCircle, Paintbrush, ChevronDown, Pencil } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
+import { Plus, Play, Search, Swords, Zap, Headset, UserCircle2, LogOut, Gamepad2, Moon, SortAsc, Calendar, LayoutGrid, AlertTriangle, Trash2, Clock, History, RotateCcw, Check, X, FolderPlus, Folder, MoreVertical, Edit2, PlayCircle, Paintbrush, ChevronDown, Pencil, Settings, Info, MessageSquare, Languages, Type } from "lucide-react"
 import { OpeningCard } from "./opening-card"
 import { parsePgn, type Opening, type Collection, OPENINGS_LIMIT, COLLECTIONS_LIMIT } from "@/lib/openings"
 import { CHESS_THEMES, type ChessTheme } from "@/lib/themes"
 import { ThemeSelectorDialog } from "./theme-selector-dialog"
+import { DeletionHistoryDialog } from "./deletion-history-dialog"
 import { AddToCollectionDialog } from "./add-to-collection-dialog"
 import { SelectCollectionDialog } from "./select-collection-dialog"
 import { CollectionDescriptionDialog } from "./collection-description-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AddOpeningForm } from "./add-opening-form"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { getStyles } from "@/lib/styles"
+import useEmblaCarousel from 'embla-carousel-react'
+import Autoplay from 'embla-carousel-autoplay'
+import { Button } from "./ui/button"
+import { ScrollArea } from "./ui/scroll-area"
+import { Separator } from "./ui/separator"
+import { Switch } from "./ui/switch"
+import { Label } from "./ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { toast } from "sonner"
 
 
 type Props = {
-  onAbsoluteRandom: () => void
   openings: Opening[]
   collections: Collection[]
   onAdd: (opening: Opening) => Promise<string | null>
@@ -28,6 +37,7 @@ type Props = {
   onBulkDelete?: (ids: string[]) => Promise<void>
   onEdit: (opening: Opening) => void
   onStudy: (opening: Opening, fromHistory?: boolean) => void
+  onDetail: (opening: Opening) => void
   onLogout: () => Promise<void>
   userEmail: string
   onSendFeedback: (message: string) => Promise<string | null>
@@ -44,10 +54,17 @@ type Props = {
   currentTheme: ChessTheme
   onThemeChange: (theme: ChessTheme) => void
   isSaving?: boolean
+  onClearAllData?: () => Promise<void>
+  onRestore: (id: string) => Promise<void>
+  onRestoreAll: () => Promise<void>
+  onClearAllLogs: () => Promise<void>
+  language: "ru" | "en"
+  onLanguageChange: (lang: "ru" | "en") => void
+  pgnFormat: "standard" | "short"
+  onPgnFormatChange: (format: "standard" | "short") => void
 }
 
 export function HomeScreen({
-  onAbsoluteRandom,
   openings,
   collections = [],
   onAdd,
@@ -58,6 +75,7 @@ export function HomeScreen({
   onBulkDelete,
   onEdit,
   onStudy,
+  onDetail,
   onLogout,
   userEmail,
   onSendFeedback,
@@ -74,17 +92,22 @@ export function HomeScreen({
   currentTheme,
   onThemeChange,
   isSaving = false,
+  onClearAllData,
+  onRestore,
+  onRestoreAll,
+  onClearAllLogs,
+  language,
+  onLanguageChange,
+  pgnFormat,
+  onPgnFormatChange,
 }: Props) {
   const s = getStyles(currentTheme)
   const accentBorder = { boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 100%, transparent)` }
   const accentGlow = { boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 100%, transparent), 0 0 24px 4px ${s.glow}` }
-  const moonGlow = {background: "#ffffff",boxShadow: "0 0 22px 8px rgba(255, 255, 255, 0.55), 0 0 44px 8px rgba(200,200,255,0.2)",}
+  
   const [query, setQuery] = useState("")
   const [sortBy, setSortBy] = useState<"name" | "date">("date")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
-  const [collectionSortBy, setCollectionSortBy] = useState<"name" | "date">("date")
-  const [collectionSortOrder, setCollectionSortOrder] = useState<"asc" | "desc">("desc")
-  const [menuOpen, setMenuOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState("")
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
@@ -92,14 +115,6 @@ export function HomeScreen({
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [collectionToDeleteId, setCollectionToDeleteId] = useState<string | null>(null)
-  const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false)
-  const [editingDescription, setEditingDescription] = useState(false)
-  const [descriptionDraft, setDescriptionDraft] = useState("")
-  const [descriptionKey, setDescriptionKey] = useState(0)
-  const descTouchStartPos = useRef<{ x: number; y: number } | null>(null)
-  const descScrolled = useRef(false)
-  const [cooldownMessage, setCooldownMessage] = useState<string | null>(null)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isCollectionMode, setIsCollectionMode] = useState(false)
@@ -108,8 +123,18 @@ export function HomeScreen({
   const [newCollectionName, setNewCollectionName] = useState("")
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [themeDialogOpen, setThemeDialogOpen] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(16)
-  const [visibleCollectionsCount, setVisibleCollectionsCount] = useState(8)
+  
+  const [emblaRef] = useEmblaCarousel({ 
+    loop: true, 
+    dragFree: true,
+    containScroll: "trimSnaps"
+  }, [Autoplay({ delay: 3000, stopOnInteraction: false, playOnInit: true })])
+
+  const recentLogs = useMemo(() => {
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+    return deletionLogs.filter(log => new Date(log.deleted_at).getTime() > oneDayAgo).slice(0, 15)
+  }, [deletionLogs])
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -120,7 +145,6 @@ export function HomeScreen({
   }
 
   const handleLongPress = (opening: Opening) => {
-    // Enter delete mode and select this opening
     setIsDeleteMode(true)
     setIsCollectionMode(false)
     setSelectedIds(new Set([opening.id]))
@@ -129,66 +153,45 @@ export function HomeScreen({
   const handleAddToExistingCollection = async (collectionId: string) => {
     const collection = collections.find(c => c.id === collectionId)
     if (!collection) return
-
     const newOpeningIds = [...new Set([...collection.openingIds, ...Array.from(selectedIds)])]
     await onUpdateCollection(collectionId, { openingIds: newOpeningIds })
-    
     setSelectedIds(new Set())
     setIsDeleteMode(false)
     setSelectCollectionDialogOpen(false)
   }
+
   const handleConfirmAdd = async (newOpeningIds: string[]) => {
     if (!activeCollectionId) return
     await onUpdateCollection(activeCollectionId, { openingIds: newOpeningIds })
   }
-  const handleEditDescription = () => {
-    if (!activeCollectionId) return
-    setEditingCollectionId(activeCollectionId)
-    setDescriptionDialogOpen(true)
-  }
-  const handleSaveDescription = async (description: string) => {
-    if (!editingCollectionId) return
-    await onUpdateCollection(editingCollectionId, { description })
-    setEditingCollectionId(null)
-  }
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) {
       setIsDeleteMode(false)
       return
     }
-
     const idsArray = Array.from(selectedIds)
-    
-    if (activeCollectionId) {
-      const collection = collections.find(c => c.id === activeCollectionId)
-      if (collection) {
-        const newOpeningIds = collection.openingIds.filter(id => !selectedIds.has(id))
-        await onUpdateCollection(activeCollectionId, { openingIds: newOpeningIds })
-      }
+    if (onBulkDelete) {
+      await onBulkDelete(idsArray)
     } else {
-      if (onBulkDelete) {
-        // Modern way: single optimized call
-        await onBulkDelete(idsArray)
-        } else {
-          for (let i = 0; i < idsArray.length; i += 5) {
-            await Promise.all(idsArray.slice(i, i + 5).map(id => onDelete(id)))
-          }
-        }
+      for (let i = 0; i < idsArray.length; i += 5) {
+        await Promise.all(idsArray.slice(i, i + 5).map(id => onDelete(id)))
+      }
     }
-
     setSelectedIds(new Set())
     setIsDeleteMode(false)
   }
+
   const handleSelectAll = () => {
-     if (selectedIds.size === displayOpenings.length) {
-       setSelectedIds(new Set())
-     } else {
-       setSelectedIds(new Set(displayOpenings.map(o => o.id)))
-     }
-   }
+    if (selectedIds.size === displayOpenings.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(displayOpenings.map(o => o.id)))
+    }
+  }
+
   const handleCreateCollectionSubmit = async () => {
     if (!newCollectionName.trim()) return
-    
     if (editingCollectionId) {
       await onUpdateCollection(editingCollectionId, {
         name: newCollectionName.trim(),
@@ -198,95 +201,38 @@ export function HomeScreen({
       if (selectedIds.size === 0) return
       await onCreateCollection(newCollectionName.trim(), Array.from(selectedIds))
     }
-    
     setCollectionDialogOpen(false)
     setNewCollectionName("")
     setIsCollectionMode(false)
     setSelectedIds(new Set())
     setEditingCollectionId(null)
   }
-const handleEditCollection = (collection: Collection) => {
-  setEditingCollectionId(collection.id)
-  setNewCollectionName(collection.name)
-  setSelectedIds(new Set(collection.openingIds))
-  setCollectionDialogOpen(true)
-}
+
   useEffect(() => {
     setMounted(true)
   }, [])
-  useEffect(() => {
-    setVisibleCount(16)
-    setVisibleCollectionsCount(8)
-  }, [activeCollectionId, query, sortBy, collectionSortBy])
+
   const filtered = useMemo(() => {
-    // 1. First, define the pool of openings to filter from
-    let pool = openings
+    let pool = openings.filter(o => !o.parentId)
     if (activeCollectionId) {
       const collection = collections.find(c => c.id === activeCollectionId)
       if (collection) {
         pool = openings.filter(o => collection.openingIds.includes(o.id))
       }
     }
-
     const q = query.trim().toLowerCase()
     if (!q) return pool
+    return pool.filter((o) => 
+      o.name.toLowerCase().includes(q) ||
+      o.description.toLowerCase().includes(q) ||
+      o.pgn.toLowerCase().includes(q)
+    )
+  }, [openings, activeCollectionId, collections, query])
 
-    // Check if query is a number (for move count filtering)
-    const moveCountQuery = parseInt(q, 10)
-    const isNumeric = !isNaN(moveCountQuery) && /^\d+$/.test(q)
-
-    return pool.filter((o) => {
-      // Basic text search
-      const matchesText = 
-        o.name.toLowerCase().includes(q) ||
-        o.description.toLowerCase().includes(q) ||
-        o.pgn.toLowerCase().includes(q)
-      
-      if (matchesText) return true
-
-      // If numeric, also check for exact move count
-      if (isNumeric) {
-        const parsed = parsePgn(o.pgn)
-        return parsed.fullMoveCount === moveCountQuery
-      }
-
-      return false
-    })
-  }, [openings, query, activeCollectionId, collections])
-  const confirmDelete = async () => {
-    if (!deleteId) return
-    
-    if (activeCollectionId) {
-      const collection = collections.find(c => c.id === activeCollectionId)
-      const opening = openings.find(o => o.id === deleteId)
-      if (collection && opening) {
-        const newOpeningIds = collection.openingIds.filter(id => id !== deleteId)
-        await onUpdateCollection(activeCollectionId, { openingIds: newOpeningIds })
-        
-        // No easy way to log here without userId, but ClientApp should handle this
-        // in onUpdateCollection if we wanted to. For now, we've at least fixed
-        // the primary collection deletion logging in ClientApp.
-      }
-      setDeleteId(null)
-    } else {
-      await onDelete(deleteId)
-        setDeleteId(null)
-    }
-  }
-  const confirmDeleteCollection = async () => {
-    if (!collectionToDeleteId) return
-    await onDeleteCollection(collectionToDeleteId)
-    setCollectionToDeleteId(null)
-  }
   const displayOpenings = useMemo(() => {
     let result = [...filtered]
-    
     if (sortBy === "date") {
-      result.sort((a, b) => {
-        return sortOrder === "desc" 
-          ? b.createdAt - a.createdAt 
-          : a.createdAt - b.createdAt
-      })
+      result.sort((a, b) => sortOrder === "desc" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt)
     } else {
       result.sort((a, b) => {
         const comparison = a.name.localeCompare(b.name, "ru")
@@ -296,949 +242,287 @@ const handleEditCollection = (collection: Collection) => {
     return result
   }, [filtered, sortBy, sortOrder])
 
-  const sortedCollections = useMemo(() => {
-    let result = [...collections]
-    
-    if (collectionSortBy === "date") {
-      result.sort((a, b) => {
-        return collectionSortOrder === "desc" 
-          ? b.createdAt - a.createdAt 
-          : a.createdAt - b.createdAt
-      })
-    } else {
-      result.sort((a, b) => {
-        const comparison = a.name.localeCompare(b.name, "ru")
-        return collectionSortOrder === "asc" ? comparison : -comparison
-      })
-    }
-    return result
-  }, [collections, collectionSortBy, collectionSortOrder])
-  const visibleOpenings = displayOpenings.slice(0, visibleCount)
-  const handleAddButtonClick = () => {
-    const container = document.getElementById("add-form-container")
-    if (container) {
-      container.scrollIntoView({ behavior: "smooth" })
-      // Focus the name input after a short delay to allow for scrolling
-      setTimeout(() => {
-        const nameInput = document.getElementById("opening-name")
-        if (nameInput) {
-          nameInput.focus()
-        }
-      }, 500)
-    }
+  const confirmDelete = async () => {
+    if (!deleteId) return
+    await onDelete(deleteId)
+    setDeleteId(null)
   }
 
+  if (!mounted) return null
 
-
-
-const ThemeIcon = currentTheme.icon
-  return ( 
-    <div className="screen-in min-h-dvh bg-background">
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
-      <header
-  className="fixed inset-x-0 top-0 z-40 bg-background/85 backdrop-blur-md"
-  style={{ borderBottom: `1px solid ${s.accent}` }}
->
-      
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setActiveCollectionId(null)}
-              className="group flex items-center gap-2 outline-none"
-            >
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform group-active:scale-95 ${currentTheme.id === "dark" && !activeCollectionId ? "" : "bg-accent text-accent-foreground"}`}
-              >
-                {activeCollectionId ? (
-                  <Folder className="h-6 w-6" />
-                ) : currentTheme.id === "dark" ? (
-                  <div
-                    className="relative flex h-10 w-10 items-center justify-center rounded-full"
-                  style={moonGlow}
-                  >
-                    <Moon className="h-6 w-6 text-black" />
-                  </div>
-                ) : (
-                  <ThemeIcon className="h-6 w-6" />
-                  
-                )}
-              </div>
-              <div className="text-left">
-                <h1 className="text-lg font-bold leading-none tracking-tight">
-                  {activeCollectionId ? "Коллекция" : "RCD"}
-                </h1>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  {activeCollectionId ? collections.find(c => c.id === activeCollectionId)?.name : "Random Chess Debut"}
-                </p>
-              </div>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2" >
-            {mounted && (
-              <div className="mr-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground"
-              style={{ borderColor: s.accent }}>
-                <span className="text-foreground font-semibold">Рекорд</span>
-                <span className="tabular-nums text-foreground font-bold">
-                  {record !== null ? Math.round(record) : 0}
-                </span>
-              </div>
-            )}
-
-            <button
-              onClick={() => setThemeDialogOpen(true)}
-              disabled={isSaving}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card transition hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Тематика"
-            style={{ borderColor: s.accent }}>
-              <Paintbrush className="h-5 w-5" />
-            </button>
-
-
-            <button
-              onClick={() => setHistoryOpen(true)}
-              disabled={isSaving}
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card transition hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="История удалений"
-            style={{ borderColor: s.accent }}>
-              <Clock className="h-5 w-5" />
-              {deletionLogs.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white animate-in zoom-in duration-300">
-                  {deletionLogs.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setFeedbackOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card transition hover:bg-accent"
-              aria-label="Обратная связь"
-             
-            style={{ borderColor: s.accent }}>
-              <Headset className="h-5 w-5" />
-            </button>
-
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card transition hover:bg-accent"
-                aria-label="Профиль"
-              
-              style={{ borderColor: s.accent }}>
-                <UserCircle2 className="h-5 w-5" />
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-card p-2 shadow-xl"
-               style={{ borderColor: s.accent }}>
-                  <div className="mb-1 truncate px-2 py-1 text-xs text-muted-foreground">{userEmail}</div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setMenuOpen(false)
-                      await onLogout()
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-error transition hover:bg-error/10 hover:text-error"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Выйти
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-card/50 backdrop-blur-md z-50">
+        <h1 className="text-xl font-black tracking-[0.3em] text-primary sm:text-2xl">
+          RANDOM CHESS DEBUT
+        </h1>
       </header>
 
-      {/* КАРТОЧКА ГЛАВНОЕ МЕНЮ */}
-      <main className="mx-auto max-w-5xl px-6 pb-6 pt-20 md:pb-10 md:pt-24"
-      style={accentGlow}>
-        
-        {!activeCollectionId && (
-          
-          <div className="mb-8 flex flex-col items-center gap-6 md:mb-10">
-            {/* КАРТОЧКАСТАРТ И СВОЯ ИГРА */}
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {/* Абсолютный рандом — над Стартом */}
-              <button
-                type="button"
-                onClick={onAbsoluteRandom}
-                disabled={openings.length === 0 || isSaving}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-6 text-sm font-semibold transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
-                style={accentGlow}
-                title="Подаёт дебюты любой стороны: белые, чёрные и случайные"
-              >
-                <Zap className="h-4 w-4" />
-                Абсолютный рандом
-              </button>
-
-              <button
-                type="button"
-                onClick={onStart}
-                disabled={openings.length === 0 || isSaving}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                style={accentGlow}
-              >
-                <Play className="h-4 w-4 fill-current" />
-                Старт
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onCustomStart()}
-                disabled={openings.length === 0 || isSaving}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-card px-6 text-sm font-semibold transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                style={accentGlow}
-              >
-                <Gamepad2 className="h-4 w-4" />
-                Своя игра
-              </button>
-            </div>
-
-
-            {/* КАРТОЧКА ПОИСКА */}
-            <div className="flex w-full max-w-md flex-col gap-4">
-              <div className="relative group">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-accent" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Поиск по названию, описанию или ходам..."
-                  className="h-14 w-full rounded-2xl bg-card pl-12 pr-4 text-base outline-none transition focus:border-primary"
-                  style={accentGlow}
-
-                />
-              </div>
-            </div>
-
-            {/* ТЕЛО ДОБАВЛЕНИЯ ДЕБЮТОВ */}
-            <div className="w-full max-w-md" id="add-form-container" >
-                <AddOpeningForm onSave={onAdd} isInline isSaving={isSaving} currentTheme={currentTheme} />
-              </div>
+      <div className="flex flex-1 overflow-hidden">
+        {/* ЛЕВАЯ ПАНЕЛЬ: ПОСЛЕДНИЕ ИЗМЕНЕНИЯ */}
+        <aside className="hidden w-72 flex-col border-r border-border bg-card/20 lg:flex shrink-0">
+          <div className="flex items-center gap-2 border-b border-border p-4">
+            <History className="h-5 w-5 text-primary" />
+            <h2 className="font-bold">Последние изменения</h2>
           </div>
-        )}
-
-        {/* КОЛЛЕКЦИИ */}
-        {collections.length > 0 && !activeCollectionId && (
-          <div className="mb-10">
-            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex rounded-full bg-card p-1 shadow-sm gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (collectionSortBy === "name") {
-                        setCollectionSortOrder(prev => prev === "asc" ? "desc" : "asc")
-                      } else {
-                        setCollectionSortBy("name")
-                        setCollectionSortOrder("asc")
-                      }
-                    }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm transition ${collectionSortBy === "name" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    style={accentGlow}
-                  >
-                    <SortAsc className={cn("h-3.5 w-3.5 transition-transform", collectionSortBy === "name" && collectionSortOrder === "desc" && "rotate-180")} />
-                    Название
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (collectionSortBy === "date") {
-                        setCollectionSortOrder(prev => prev === "desc" ? "asc" : "desc")
-                      } else {
-                        setCollectionSortBy("date")
-                        setCollectionSortOrder("desc")
-                      }
-                    }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm transition ${collectionSortBy === "date" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    style={accentGlow}
-                  >
-                    <Calendar className={cn("h-3.5 w-3.5 transition-transform", collectionSortBy === "date" && collectionSortOrder === "asc" && "rotate-180")} />
-                    Дата
-                  </button>
+          <ScrollArea className="flex-1">
+            <div className="space-y-4 p-4">
+              {recentLogs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                  <Clock className="mb-2 h-8 w-8 opacity-20" />
+                  <p className="text-sm">Нет недавних изменений</p>
                 </div>
-              </div>
-
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <Folder className="h-5 w-5 text-primary" />
-                Коллекции
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({collections.length} из {COLLECTIONS_LIMIT})
-                </span>
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {sortedCollections.slice(0, visibleCollectionsCount).map((collection) => {
-                
-                const validCount = collection.openingIds.filter(id => openings.some(o => o.id === id)).length
-                {/* КАРТОЧКА КОЛЛЕКЦИИ */}
-                return (
-                  <div
-                    key={collection.id}
-                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-transparent bg-card p-4 transition-all hover:-translate-y-0.5"
-                    style={accentGlow}
-                    onClick={() => setActiveCollectionId(collection.id)}
-                  >
-                    <div className="mb-3 flex items-Start justify-between">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Folder className="h-6 w-6" />
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button 
-                            className="rounded-lg p-1 hover:bg-accent outline-none"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                            }}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent 
-                          align="end"
-                          onClick={(e) => e.stopPropagation()}
-                          style={accentBorder}
-                        >
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation()
-                            handleEditCollection(collection)
-                          }}>
-                            <Edit2 className="mr-0 h-4 w-4" />
-                            Редактировать
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-error" 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setCollectionToDeleteId(collection.id)
-                            }}
-                          >
-                            <Trash2 className="mr-0 h-4 w-4" />
-                            Удалить
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <h3 className="mb-1 font-bold line-clamp-1">{collection.name}</h3>
-                    <div className="mt-auto flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {validCount} {pluralOpenings(validCount)}
-                      </p>
-                      <p className="text-xs text-muted-foreground tabular-nums">
-                        {new Intl.DateTimeFormat("ru-RU", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(collection.createdAt))}
-                      </p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {sortedCollections.length > visibleCollectionsCount && (
-              <div className="mt-6 flex justify-center">
-                <button
-                  onClick={() => setVisibleCollectionsCount(prev => prev + 8)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-8 text-sm font-semibold transition hover:bg-accent active:scale-95"
-                  style={accentGlow}
-                >
-                  <ChevronDown className="h-4 w-4" />
-                  Показать еще
-                </button>
-              </div>
-            )}
-
-            {/* РАЗДЕЛИТЕЛЬ */}
-            <div className="mt-12 flex items-center gap-4">
-              <div className="h-px flex-1 rounded-full" style={{ backgroundColor: `color-mix(in srgb, ${s.accent} 100%, transparent)`, boxShadow: `0 0 6px 4px ${s.glow}` }} />
-              <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `color-mix(in srgb, ${s.accent} 100%, transparent)`, boxShadow: `0 0 6px 4px ${s.glow}` }} />
-              <div className="h-px flex-1 rounded-full" style={{ backgroundColor: `color-mix(in srgb, ${s.accent} 100%, transparent)`, boxShadow: `0 0 6px 4px ${s.glow}` }} />
-            </div>
-          </div>
-        )}
-
-        {/* ВНУТРИ КОЛЛЕКЦИИ */}
-        {activeCollectionId && (
-          <div className="mb-8 flex flex-col gap-6">
-            {/* КАРТОЧКА ВНУТРИ КОЛЛЕКЦИИ */}
-            <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-accent/20 bg-card p-6 shadow-xl shadow-accent/5 sm:flex-row"
-          style={accentGlow}>
-            {/* ПОЛЕ НАЗВАНИЯ И ИКОНКИ */}
-              <div className="flex items-start gap-4 w-full min-w-0">
-                {/* ИКОНКА КОЛЛЕКЦИИ */}
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
-                style={accentGlow}>
-                  <Folder className="h-7 w-7" />
-                </div>
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <h2 className="text-xl font-bold leading-tight">
-                    {collections.find(c => c.id === activeCollectionId)?.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {displayOpenings.length} дебютов в коллекции
-                  </p>
-                </div>
-              </div>
-              {/* Collection Buttons - 2x2 Grid */}
-              <div className="flex shrink-0 flex-col gap-2">
-                <div className="grid grid-cols-3 gap-2">
-                {/* Start */}
-                <button
-                  onClick={() => {
-                    const collection = collections.find(c => c.id === activeCollectionId)
-                    if (collection && onStartCollection) {
-                      onStartCollection(collection.openingIds)
-                    } else {
-                      onStart()
-                    }
-                  }}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20"
-                  style={accentGlow}>
-                  <Play className="h-4 w-4 fill-current" />
-                  Старт
-                </button>
-                {/* CUSTOM GAME */}
-                <button
-                  onClick={() => {
-                    const collection = collections.find(c => c.id === activeCollectionId)
-                    if (collection) {
-                      onCustomStart(collection.openingIds)
-                    } else {
-                      onCustomStart()
-                    }
-                  }}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-4 text-sm font-semibold transition hover:bg-accent"
-                  style={accentGlow}>
-                  <Gamepad2 className="h-4 w-4" />
-                  Своя игра
-                </button>
-                {/* ADD */}
-                <button
-                  onClick={() => setAddDialogOpen(true)}
-                  disabled={isSaving}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-card px-4 text-sm font-semibold transition hover:bg-accent disabled:opacity-50"
-                  style={accentGlow}>
-                  <Plus className="h-4 w-4" />
-                  Добавить
-                </button>
-
-                </div>
-                {/* RETURN */}
-                <button
-                  onClick={() => setActiveCollectionId(null)}
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-foreground transition hover:bg-accent"
-                  style={accentGlow}>
-                  <RotateCcw className="h-4 w-4" />
-                  Вернуться
-                </button>
-              </div>
-            </div>
-            {/* ПОЛЕ ПОИСКА ВНУТРИ КОЛЛЕКЦИИ */}
-            <div className="flex w-full max-w-md flex-col gap-3 self-center">
-              <div className="relative group w-full">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-accent" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Поиск внутри коллекции..."
-                  className="h-12 w-full rounded-2xl bg-card pl-11 pr-4 text-sm outline-none transition
-                    focus:border-accent focus:ring-4 focus:ring-accent/5"
-                     style={accentGlow}
-                />
-              </div>
-              </div>
-              {(() => {
-                const activeCollection = collections.find(c => c.id === activeCollectionId)
-                if (!activeCollection) return null
-                const hasDescription = !!activeCollection.description
-                if (!hasDescription && !editingDescription) return null
-                return (
-                  <div className="rounded-2xl max-w-4xl border self-center border-accent/20 bg-card p-4 w-full" style={accentGlow}>
-                    <div className="flex flex-col gap-3">
-                      <p
-                        key={descriptionKey}
-                        contentEditable
-                        suppressContentEditableWarning
-                        onMouseDown={() => {
-                          setEditingDescription(true)
-                          setDescriptionDraft(activeCollection.description || "")
-                        }}
-                        onTouchStart={(e) => {
-                          descScrolled.current = false
-                          descTouchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-                        }}
-                        onTouchMove={(e) => {
-                          if (!descTouchStartPos.current) return
-                          const dx = Math.abs(e.touches[0].clientX - descTouchStartPos.current.x)
-                          const dy = Math.abs(e.touches[0].clientY - descTouchStartPos.current.y)
-                          if (dx > 8 || dy > 8) descScrolled.current = true
-                        }}
-                        onTouchEnd={(e) => {
-                          if (!descScrolled.current) {
-                            setEditingDescription(true)
-                            setDescriptionDraft(activeCollection.description || "")
-                          }
-                          descTouchStartPos.current = null
-                        }}
-                        onInput={(e) => setDescriptionDraft(e.currentTarget.innerText)}
-                        className="text-lg leading-relaxed text-foreground/80 whitespace-pre-wrap break-words outline-none min-h-[2em] cursor-text"
-                        style={{ caretColor: "var(--color-accent, currentColor)" }}
+              ) : (
+                recentLogs.map((log) => (
+                  <div key={log.id} className="group relative rounded-xl border border-border bg-card/50 p-3 transition hover:border-primary/50">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Удалено {new Date(log.deleted_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <button
+                        onClick={() => onRestore(log.id)}
+                        className="rounded-full p-1 text-primary opacity-0 transition group-hover:opacity-100 hover:bg-primary/10"
+                        title="Восстановить"
                       >
-                        {activeCollection.description}
-                      </p>
-                      {editingDescription && (
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              setEditingDescription(false)
-                              setDescriptionDraft("")
-                              setDescriptionKey(k => k + 1)
-                            }}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:bg-accent/10"
-                          >
-                            Отмена
-                          </button>
-                          <button
-                            disabled={isSaving}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={async () => {
-                              if (!activeCollectionId) return
-                              await onUpdateCollection(activeCollectionId, { description: descriptionDraft })
-                              setEditingDescription(false)
-                              setDescriptionDraft("")
-                            }}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:brightness-110 disabled:opacity-50"
-                            style={accentGlow}
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                            Сохранить
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-
-        )}
-
-        {displayOpenings.length === 0 ? (
-          query.trim() ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/40 py-16 text-center"
-           >
-              <Search className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Ничего не найдено по вашему запросу</p>
-            </div>
-          ) : (
-            <EmptyState 
-              onAddClick={handleAddButtonClick} 
-              isSaving={isSaving} 
-              isCollection={!!activeCollectionId}
-            />
-          )
-        ) : (
-          <>
-            <div className="mb-6 flex flex-wrap items-center justify-between">
-              <div className="flex items-center ">
-                {isDeleteMode ? (
-                  <div className="flex items-center gap-3 rounded-full bg-card"
-                     >
-                    <button
-                      type="button"
-                      onClick={handleSelectAll}
-                      className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-                    style={accentGlow}>
-                      {selectedIds.size === displayOpenings.length ? "Снять всё" : "Выбрать всё"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsDeleteMode(false)
-                        setSelectedIds(new Set())
-                      }}
-                      className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-                    style={accentGlow}>
-                      <X className="h-3.5 w-3.5" />
-                      Отмена
-                    </button>
-                  </div>
-                ) : isCollectionMode ? (
-                  <div className="flex items-center gap-1 rounded-full bg-card p-1 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={handleSelectAll}
-                      className="inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-                    style={accentGlow}>
-                      {selectedIds.size === displayOpenings.length ? "Снять всё" : "Выбрать всё"}
-                    </button>
-                    <div className="mx-1 my-1.5 w-px bg-border" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCollectionMode(false)
-                        setSelectedIds(new Set())
-                        setEditingCollectionId(null)
-                        setNewCollectionName("")
-                      }}
-                      className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-                    style={accentGlow}>
-                      <X className="h-3.5 w-3.5" />
-                      Отмена
-                    </button>
-                  </div>
-                ) : (
-                  <div className="inline-flex flex-wrap gap-1">
-                    <div className="inline-flex rounded-full bg-card p-1 gap-3"
-                       >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDeleteMode(true)
-                          setIsCollectionMode(false)
-                          setSelectedIds(new Set())
-                        }}
-                        className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-                        title="Массовое удаление"
-                      style={accentGlow}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Выбрать
-                      </button>
-                      {!activeCollectionId && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsCollectionMode(true)
-                              setIsDeleteMode(false)
-                              setSelectedIds(new Set())
-                            }}
-                            className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-                            title="Создать коллекцию"
-                          style={accentGlow}>
-                            <FolderPlus className="h-3.5 w-3.5" />
-                            Коллекция
-                          </button>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="inline-flex rounded-full bg-card p-1 shadow-sm gap-3"
-                 >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sortBy === "name") {
-                            setSortOrder(prev => prev === "asc" ? "desc" : "asc")
-                          } else {
-                            setSortBy("name")
-                            setSortOrder("asc")
-                          }
-                        }}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm transition ${sortBy === "name" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                      style={accentGlow}>
-                        <SortAsc className={cn("h-3.5 w-3.5 transition-transform", sortBy === "name" && sortOrder === "desc" && "rotate-180")} />
-                        Название
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sortBy === "date") {
-                            setSortOrder(prev => prev === "desc" ? "asc" : "desc")
-                          } else {
-                            setSortBy("date")
-                            setSortOrder("desc")
-                          }
-                        }}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm transition ${sortBy === "date" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                      style={accentGlow}>
-                        <Calendar className={cn("h-3.5 w-3.5 transition-transform", sortBy === "date" && sortOrder === "asc" && "rotate-180")} />
-                        Дата
+                        <RotateCcw className="h-3 w-3" />
                       </button>
                     </div>
+                    <h3 className="line-clamp-1 text-sm font-bold">{log.opening_name || "Без названия"}</h3>
+                    <p className="line-clamp-2 text-[10px] text-muted-foreground">{log.opening_description}</p>
                   </div>
-                )}
-              </div>
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <LayoutGrid className="h-5 w-5 text-primary" />
-                {activeCollectionId ? "Дебюты в коллекции" : "Основная коллекция"}
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({activeCollectionId ? displayOpenings.length : openings.length} из {activeCollectionId ? COLLECTIONS_LIMIT : OPENINGS_LIMIT})
-                </span>
-              </h2>
+                ))
+              )}
             </div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {visibleOpenings.map((opening) => (
-                <OpeningCard
-                  key={opening.id}
-                  opening={opening}
-                  onDelete={() => { setDeleteId(opening.id); return Promise.resolve() }}
-                  onEdit={onEdit}
-                  onStudy={onStudy}
-                  isDeleteMode={isDeleteMode || isCollectionMode}
-                  isSelected={selectedIds.has(opening.id)}
-                  onToggleSelect={toggleSelect}
-                  theme={currentTheme}
-                  isSaving={isSaving}
-                  onLongPress={handleLongPress}
-                />
-              ))}
-            </div>
-
-            {displayOpenings.length > visibleCount && (
-              <div className="mt-8 flex justify-center pb-12">
-                <button
-                  onClick={() => setVisibleCount(prev => prev + 16)}
-                  className="inline-flex h-11 text-foreground items-center gap-2 rounded-full bg-card px-8 text-sm font-semibold text-primary transition hover:bg-primary/5 active:scale-95"
-                style={accentGlow}>
-          
-                  Показать еще
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </main>
-      {/* КАрточка обратной связи  */}
-      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
-        <DialogContent className="max-w-md"
-        style={accentGlow}>
-          <DialogHeader>
-            {/* Иконка обратной связи */}
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary"
-            style={accentGlow}>
-              <Headset className="h-6 w-6" />
-            </div>
-            <DialogTitle className="text-center text-xl">Обратная связь</DialogTitle>
-            <DialogDescription className="text-center"
+          </ScrollArea>
+          <div className="border-t border-border p-4">
+            <Button 
+              variant="outline" 
+              className="w-full gap-2 rounded-xl text-xs font-bold uppercase tracking-wider"
+              onClick={() => setHistoryOpen(true)}
+              style={accentGlow}
             >
-              Опишите проблему или предложение. Сообщение сохранится в Supabase.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              setFeedbackError(null)
-              if (!feedbackText.trim()) {
-                setFeedbackError("Введите сообщение")
-                return
-              }
-              setFeedbackSaving(true)
-              try {
-                const error = await onSendFeedback(feedbackText.trim())
-                if (error) {
-                  setFeedbackError(error)
-                  return
-                }
-                setFeedbackText("")
-                setFeedbackOpen(false)
-              } finally {
-                setFeedbackSaving(false)
-              }
-            }}
-            className="flex flex-col gap-3"
-            
-          >
-            <textarea
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              placeholder="Ваше сообщение..."
-              disabled={feedbackSaving || isSaving}
-              className="min-h-[120px] rounded-md border border-input bg-background p-3 text-sm outline-none transition focus:border-accent disabled:opacity-50"
-            />
-            {feedbackError && <p className="text-xs text-error">{feedbackError}</p>}
-            <button
-              type="submit"
-              disabled={feedbackSaving || isSaving}
-              className="h-10 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {feedbackSaving || isSaving ? "Сохранение..." : "Отправить"}
-            </button>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <History className="h-3.5 w-3.5" />
+              Вся история
+            </Button>
+          </div>
+        </aside>
 
-      {/* Fixed Selection Bar for Collections */}
-      {(isCollectionMode || isDeleteMode) && selectedIds.size > 0 && (
-        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center gap-4 rounded-2xl bg-card p-4 backdrop-blur-md" style={accentGlow}>
-            <div className="flex items-center gap-2 px-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                {selectedIds.size}
-              </div>
-              <span className="text-sm font-medium">дебютов выбрано</span>
-            </div>
-            <div className="h-8 w-px bg-border" />
-          <div className="flex items-center gap-2">
-            {isCollectionMode ? (
-              <button
-                onClick={() => setCollectionDialogOpen(true)}
-                disabled={isSaving}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-error px-6 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-lg shadow-error/20 disabled:opacity-50 disabled:cursor-not-allowed"
+        {/* ЦЕНТРАЛЬНАЯ ЧАСТЬ: ЛЕНТА ДЕБЮТОВ */}
+        <main className="relative flex flex-1 flex-col overflow-hidden bg-accent/5">
+          {/* Верхние кнопки управления */}
+          <div className="flex items-center justify-center gap-4 p-6 shrink-0">
+            <Button 
+              onClick={onStart} 
+              disabled={openings.length === 0}
+              className="h-12 rounded-full px-8 text-sm font-bold uppercase tracking-widest"
+              style={accentGlow}
+            >
+              <Play className="mr-2 h-4 w-4 fill-current" />
+              Старт
+            </Button>
+            <Button 
+              variant="secondary"
+              onClick={() => setAddDialogOpen(true)}
+              className="h-12 rounded-full px-8 text-sm font-bold uppercase tracking-widest"
+              style={accentGlow}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить
+            </Button>
+            {activeCollectionId && (
+              <Button 
+                variant="ghost"
+                onClick={() => setActiveCollectionId(null)}
+                className="h-12 rounded-full px-6 text-sm font-bold uppercase tracking-widest"
               >
-                <Check className="h-4 w-4" />
-                {editingCollectionId ? "Обновить коллекцию" : "Создать коллекцию"}
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                {!activeCollectionId && (
-                  <button
-                    onClick={() => setSelectCollectionDialogOpen(true)}
-                    disabled={isSaving}
-                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <FolderPlus className="h-4 w-4" />
-                    Добавить в коллекцию
-                  </button>
-                )}
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={isSaving}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-error px-6 text-sm font-bold text-white transition hover:brightness-110 active:scale-95 shadow-lg shadow-error/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Удалить ({selectedIds.size})
-                </button>
-              </div>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Назад
+              </Button>
             )}
-            {/* Кнопка Отмена */}
-            <button
-              onClick={() => {
-                setIsDeleteMode(false)
-                setIsCollectionMode(false)
-                setSelectedIds(new Set())
-              }}
-              disabled={isSaving}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-transparent px-4 text-sm font-semibold transition hover:bg-accent disabled:opacity-50"
-            >
-              <X className="h-4 w-4" />
-              Отмена
-            </button>
           </div>
-          </div>
-        </div>
-      )}
 
-      {/* Карточка создания/редактирования коллекции */}
-      <Dialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen}>
-        <DialogContent className="sm:max-w-md"style={accentGlow}>
-          <DialogHeader>
-            <DialogTitle>{editingCollectionId ? "Редактировать коллекцию" : "Новая коллекция"}</DialogTitle>
-            <DialogDescription>
-              Введите название для вашей подборки из {selectedIds.size} дебютов.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <label htmlFor="collection-name" className="mb-2 block text-sm font-medium">
-              Название коллекции
-            </label>
-            <input
-              id="collection-name"
-              type="text"
-              value={newCollectionName}
-              onChange={(e) => setNewCollectionName(e.target.value.slice(0, 100))}
-              placeholder="Например: Мой репертуар за черных"
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50"
-              disabled={isSaving}
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="gap-2 sm:justify-end">
-            <button
-              onClick={() => {
-                setCollectionDialogOpen(false)
-                setEditingCollectionId(null)
-              }}
-              disabled={isSaving}
-              className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-accent/5 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={accentGlow}>
-              Отмена
-            </button>
-            <button
-              onClick={handleCreateCollectionSubmit}
-              disabled={!newCollectionName.trim() || isSaving}
-              className="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-primary-foreground transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={accentGlow}>
-              {isSaving ? "Сохранение..." : "Сохранить"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Подтверждение удаления */}
-      <Dialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <DialogContent className="max-w-md"
-        style={accentGlow}>
-          <DialogHeader>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-error/10 text-error"style={accentGlow}>
-              <Trash2 className="h-6 w-6" />
+          {/* Бесконечная лента */}
+          <div className="flex flex-1 flex-col items-center justify-center overflow-hidden py-4">
+            <div className="embla w-full overflow-hidden" ref={emblaRef}>
+              <div className="embla__container flex">
+                {displayOpenings.length > 0 ? (
+                  displayOpenings.map((opening) => (
+                    <div key={opening.id} className="embla__slide min-w-0 flex-[0_0_280px] px-4 py-8 sm:flex-[0_0_320px] md:flex-[0_0_360px]">
+                      <div className="transition-transform duration-300 hover:scale-105 active:scale-95">
+                        <OpeningCard
+                          opening={opening}
+                          onDelete={async (id) => setDeleteId(id)}
+                          onEdit={onEdit}
+                          onStudy={onDetail}
+                          theme={currentTheme}
+                          isSaving={isSaving}
+                          isDeleteMode={isDeleteMode}
+                          isSelected={selectedIds.has(opening.id)}
+                          onToggleSelect={toggleSelect}
+                          onLongPress={handleLongPress}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex w-full flex-col items-center justify-center py-20 text-center">
+                    <div className="mb-4 rounded-full bg-accent/20 p-8">
+                      <LayoutGrid className="h-12 w-12 text-muted-foreground opacity-20" />
+                    </div>
+                    <h3 className="text-xl font-bold">Нет дебютов</h3>
+                    <p className="text-muted-foreground">Добавьте свой первый дебют, чтобы начать</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <DialogTitle className="text-center text-xl">
-              {activeCollectionId ? "Убрать из коллекции?" : "Удалить дебют?"}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {activeCollectionId 
-                ? "Вы уверены, что хотите убрать этот дебют из текущей коллекции? Он останется в общем списке."
-                : "Вы уверены, что хотите безвозвратно удалить этот дебют из своей базы данных?"}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <button
-              onClick={() => setDeleteId(null)}
-              disabled={isSaving}
-              className="h-11 flex-1 rounded-xl border border-border bg-card font-semibold transition hover:bg-accent/5 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={accentGlow}>
-              Отмена
-            </button>
-            <button
-              onClick={confirmDelete}
-              disabled={isSaving}
-              className="h-11 flex-1 rounded-xl bg-error font-semibold text-white shadow-lg shadow-error/20 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            style={accentGlow}>
-              {isSaving ? "Удаление..." : (activeCollectionId ? "Убрать" : "Удалить")}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
 
-      {/* Подтверждение удаления коллекции */}
-      <Dialog open={collectionToDeleteId !== null} onOpenChange={(open) => !open && setCollectionToDeleteId(null)}>
-        <DialogContent className="max-w-md"style={accentGlow}>
-          <DialogHeader>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-error/10 text-error"style={accentGlow}>
-              <Trash2 className="h-6 w-6" />
+          {/* Поиск внизу */}
+          <div className="flex w-full items-center justify-center p-8 shrink-0">
+            <div className="group relative w-full max-w-xl">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={activeCollectionId ? "Поиск в коллекции..." : "Поиск по всей библиотеке..."}
+                className="h-14 w-full rounded-full border border-border bg-card pl-12 pr-6 text-base outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
+                style={accentGlow}
+              />
             </div>
-            <DialogTitle className="text-center text-xl">Удалить коллекцию?</DialogTitle>
-            <DialogDescription className="text-center">
-              Вы уверены, что хотите удалить эту коллекцию? Дебюты внутри неё не будут удалены, только сама группа.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <button
-              onClick={() => setCollectionToDeleteId(null)}
-              disabled={isSaving}
-              className="h-11 flex-1 rounded-xl border border-border bg-card font-semibold transition hover:bg-accent/5 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={accentGlow}>
-              Отмена
-            </button>
-            <button
-              onClick={confirmDeleteCollection}
-              disabled={isSaving}
-              className="h-11 flex-1 rounded-xl bg-[#DC2626] text-white font-semibold text-white shadow-lg shadow-error/20 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            style={accentGlow}>
-              {isSaving ? "Удаление..." : "Удалить"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </main>
 
+        {/* ПРАВАЯ ПАНЕЛЬ: ПРОФИЛЬ И НАСТРОЙКИ */}
+        <aside className="hidden w-80 flex-col border-l border-border bg-card/20 md:flex shrink-0">
+          <ScrollArea className="flex-1">
+            <div className="space-y-8 p-6">
+              {/* Профиль */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary" style={accentGlow}>
+                    <UserCircle2 className="h-7 w-7" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate font-bold tracking-tight">{userEmail}</h2>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Шахматист</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border bg-card/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Рекорд</span>
+                    <span className="text-lg font-black tabular-nums text-primary">{record !== null ? Math.round(record) : 0}</span>
+                  </div>
+                </div>
+              </section>
+
+              <Separator className="bg-border/50" />
+
+              {/* Настройки */}
+              <section className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-bold uppercase tracking-widest">Настройки</h3>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Тема */}
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Тема оформления</Label>
+                    <Button 
+                      variant="outline" 
+                      className="h-12 w-full justify-between rounded-xl px-4"
+                      onClick={() => setThemeDialogOpen(true)}
+                      style={accentGlow}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Paintbrush className="h-4 w-4 text-primary" />
+                        <span className="font-semibold">{currentTheme.name}</span>
+                      </div>
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </div>
+
+                  {/* Язык */}
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Язык интерфейса</Label>
+                    <div className="flex rounded-xl bg-accent/20 p-1">
+                      <button 
+                        onClick={() => onLanguageChange("ru")}
+                        className={cn(
+                          "flex-1 rounded-lg py-2 text-xs font-bold uppercase transition",
+                          language === "ru" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        RU
+                      </button>
+                      <button 
+                        onClick={() => onLanguageChange("en")}
+                        className={cn(
+                          "flex-1 rounded-lg py-2 text-xs font-bold uppercase transition",
+                          language === "en" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        EN
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Формат PGN */}
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Формат записи PGN</Label>
+                    <Select value={pgnFormat} onValueChange={(v: any) => onPgnFormatChange(v)}>
+                      <SelectTrigger className="h-12 rounded-xl bg-accent/20 border-none font-semibold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border bg-card">
+                        <SelectItem value="standard" className="rounded-lg">Стандартный</SelectItem>
+                        <SelectItem value="short" className="rounded-lg">Краткий</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </section>
+
+              <Separator className="bg-border/50" />
+
+              {/* Обратная связь */}
+              <section className="space-y-4">
+                <Button 
+                  variant="ghost" 
+                  className="h-12 w-full justify-start gap-3 rounded-xl px-4 font-semibold"
+                  onClick={() => setFeedbackOpen(true)}
+                >
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                  Обратная связь
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="h-12 w-full justify-start gap-3 rounded-xl px-4 font-semibold text-error hover:bg-error/10 hover:text-error"
+                  onClick={onLogout}
+                >
+                  <LogOut className="h-5 w-5" />
+                  Выйти из системы
+                </Button>
+              </section>
+
+              {/* Очистка данных */}
+              <section className="pt-4">
+                <Button 
+                  variant="link" 
+                  className="h-auto w-full p-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-error"
+                  onClick={onClearAllData}
+                >
+                  Удалить все данные
+                </Button>
+              </section>
+            </div>
+          </ScrollArea>
+        </aside>
+      </div>
+
+      {/* Модальные окна */}
       <ThemeSelectorDialog
         open={themeDialogOpen}
         onOpenChange={setThemeDialogOpen}
@@ -1246,36 +530,103 @@ const ThemeIcon = currentTheme.icon
         onSelect={onThemeChange}
       />
 
-      {/* Select Collection Dialog */}
-      <SelectCollectionDialog
-        open={selectCollectionDialogOpen}
-        onOpenChange={setSelectCollectionDialogOpen}
-        collections={collections}
-        selectedOpeningIds={selectedIds}
-        onConfirm={handleAddToExistingCollection}
+      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <DialogContent className="rounded-3xl border-border bg-card sm:max-w-md" style={accentGlow}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl font-black">
+              <MessageSquare className="h-6 w-6 text-primary" />
+              Обратная связь
+            </DialogTitle>
+            <DialogDescription>
+              Мы будем рады услышать ваши предложения или отчеты об ошибках.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <textarea
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              placeholder="Ваше сообщение..."
+              className="min-h-[150px] w-full rounded-2xl border-none bg-accent/20 p-4 text-sm outline-none ring-primary/20 transition focus:ring-4"
+            />
+            {feedbackError && <p className="text-xs font-bold text-error">{feedbackError}</p>}
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={!feedbackText.trim() || feedbackSaving}
+              onClick={async () => {
+                setFeedbackSaving(true)
+                const err = await onSendFeedback(feedbackText)
+                setFeedbackSaving(false)
+                if (err) setFeedbackError(err)
+                else {
+                  setFeedbackOpen(false)
+                  setFeedbackText("")
+                  toast.success("Спасибо за отзыв!")
+                }
+              }}
+              className="w-full rounded-xl py-6 font-bold uppercase tracking-widest"
+              style={accentGlow}
+            >
+              {feedbackSaving ? "Отправка..." : "Отправить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="rounded-3xl border-border bg-card p-0 overflow-hidden dialog-wide flex flex-col" style={accentGlow}>
+          {/* Header — fixed, не скроллится */}
+          <div className="px-8 py-6 border-b border-border text-center shrink-0">
+            <DialogTitle className="text-2xl font-black uppercase tracking-wider text-center">Добавить дебют</DialogTitle>
+            <DialogDescription className="text-center text-sm text-muted-foreground mt-1">
+              Введите параметры нового дебюта для вашей коллекции.
+            </DialogDescription>
+          </div>
+          {/* Body — скроллится */}
+          <div className="p-6">
+            <AddOpeningForm 
+              onSave={async (o) => {
+                const err = await onAdd(o)
+                if (!err) setAddDialogOpen(false)
+                return err
+              }} 
+              isSaving={isSaving} 
+              currentTheme={currentTheme} 
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <DeletionHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        deletionLogs={deletionLogs}
+        currentTheme={currentTheme}
+        onRestoreAll={onRestoreAll}
+        onClearAll={onClearAllLogs}
+        onRestore={onRestore}
+        onStudy={onStudy}
         isSaving={isSaving}
       />
-      {/* Добавить в коллекцию */}
-      {activeCollectionId && (
-        <AddToCollectionDialog
-          open={addDialogOpen}
-          onOpenChange={setAddDialogOpen}
-          allOpenings={openings}
-          currentOpeningIds={collections.find(c => c.id === activeCollectionId)?.openingIds || []}
-          onConfirm={handleConfirmAdd}
-          isSaving={isSaving}
-          
-        />
-      )}
-      {/* Collection Description Dialog */}
-      <CollectionDescriptionDialog
-        open={descriptionDialogOpen}
-        onOpenChange={setDescriptionDialogOpen}
-        onSave={handleSaveDescription}
-        initialDescription={collections.find(c => c.id === editingCollectionId)?.description || ""}
-        collectionName={collections.find(c => c.id === editingCollectionId)?.name || ""}
-        isSaving={isSaving}
-      />
+
+      {/* Delete Confirmation */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <DialogContent className="rounded-3xl border-border bg-card" style={accentGlow}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <AlertTriangle className="h-5 w-5 text-error" />
+              Удалить дебют?
+            </DialogTitle>
+            <DialogDescription>
+              Это действие переместит дебют в историю удалений.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setDeleteId(null)} className="rounded-xl">Отмена</Button>
+            <Button variant="destructive" onClick={confirmDelete} className="rounded-xl">Удалить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1286,40 +637,4 @@ function pluralOpenings(n: number): string {
   if (mod10 === 1 && mod100 !== 11) return "дебют"
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "дебюта"
   return "дебютов"
-}
-
- {/* Пустое состояние */}
-function EmptyState({ onAddClick, isSaving = false, isCollection = false }: { onAddClick: () => void, isSaving?: boolean, isCollection?: boolean }) {
-  if (isCollection) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-dashed border-border bg-card/40 px-6 py-20 text-center">
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xl font-bold text-muted-foreground">Пусто</h3>
-        </div>
-      </div>
-    )
-  }
- {/* Добавить первый дебют */}
-  return (
-    <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-dashed border-border bg-card/40 px-6 py-20 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 text-primary shadow-inner">
-        <Plus className="h-8 w-8" />
-      </div>
-      <div className="flex flex-col gap-2">
-        <h3 className="text-xl font-bold">Добавьте первый дебют</h3>
-        <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
-          Воспользуйтесь формой выше, чтобы создать свою коллекцию. Приложение само рассчитает количество ходов и построит превью позиции.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onAddClick}
-        disabled={isSaving}
-        className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-8 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <Plus className="h-4 w-4" />
-        Создать дебют
-      </button>
-    </div>
-  )
 }

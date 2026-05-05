@@ -5,13 +5,14 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { HomeScreen } from "./home-screen"
 import { AddOpeningDialog } from "./add-opening-dialog"
 import { DeletionHistoryDialog } from "./deletion-history-dialog"
-import { StartSessionDialog, AbsoluteRandomDialog, type SessionConfig } from "./start-session-dialog"
+import { StartSessionDialog, type SessionConfig } from "./start-session-dialog"
 import { CustomSessionDialog, type CustomSessionConfig } from "./custom-session-dialog"
 import { GameScreen } from "./game-screen"
 import { NameGameScreen } from "./name-game-screen"
 import { StudyScreen } from "./study-screen"
 import { AuthScreen } from "./auth-screen"
 import { ResultsScreen, type UnitResult } from "./results-screen"
+import { OpeningDetailScreen } from "./opening-detail-screen"
 import {
   buildSession,
   parsePgn,
@@ -58,6 +59,7 @@ type Screen =
       collectionOpeningIds?: string[] | null
     }
   | { name: "study"; opening: Opening; fromHistory?: boolean; initialOrientation?: "white" | "black" }
+  | { name: "detail"; opening: Opening }
 
 type DeletionLog = {
   id: string
@@ -68,8 +70,12 @@ type DeletionLog = {
   deleted_at: string
 }
 function generateId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID()
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID()
+    }
+  } catch (e) {
+    console.warn("crypto.randomUUID failed, using fallback", e)
   }
   // UUID v4 fallback for non-HTTPS environments
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -94,17 +100,61 @@ export function ClientApp() {
   const [editingOpening, setEditingOpening] = useState<Opening | null>(null)
   const [startOpen, setStartOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
-  const [absoluteOpen, setAbsoluteOpen] = useState(false)
   const [customInitialSelection, setCustomInitialSelection] = useState<string[]>([])
   const [scoreEnabled, setScoreEnabled] = useState(true)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [deletionLogs, setDeletionLogs] = useState<DeletionLog[]>([])
+  async function handleClearAllData() {
+    if (!user) return
+    if (!confirm("Вы уверены, что хотите удалить ВСЕ свои данные? Это действие необратимо.")) return
+    
+    setIsSaving(true)
+    try {
+      // Delete from Supabase
+      await Promise.all([
+        supabase.from("openings").delete().eq("user_id", user.id),
+        supabase.from("collections").delete().eq("user_id", user.id),
+        supabase.from("records").delete().eq("user_id", user.id),
+        supabase.from("deletion_logs").delete().eq("user_id", user.id)
+      ])
+
+      // Clear local storage fallbacks
+      localStorage.removeItem(`rcd:openings:${user.id}`)
+      localStorage.removeItem(`rcd:collections:${user.id}`)
+      localStorage.removeItem(`rcd:record:${user.id}`)
+      localStorage.removeItem(`rcd:deletion_logs:${user.id}`)
+
+      // Reset state
+      setOpenings([])
+      setCollections([])
+      setRecord(0)
+      setDeletionLogs([])
+      
+      toast.success("Все данные удалены")
+    } catch (err) {
+      console.error("Error clearing data:", err)
+      toast.error("Ошибка при удалении данных")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const setScreenSafe = useCallback((s: Screen) => {
     screenRef.current = s
     setScreen(s)
   }, [])
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null)
   const [collectionOpeningIds, setCollectionOpeningIds] = useState<string[] | null>(null)
+
+  const [language, setLanguage] = useState<"ru" | "en">(() => {
+    if (typeof window === "undefined") return "ru"
+    return (localStorage.getItem("rcd_language") as "ru" | "en") || "ru"
+  })
+
+  const [pgnFormat, setPgnFormat] = useState<"standard" | "short">(() => {
+    if (typeof window === "undefined") return "standard"
+    return (localStorage.getItem("rcd_pgn_format") as "standard" | "short") || "standard"
+  })
 
   // Загрузка сохранённой темы
   const [currentTheme, setCurrentTheme] = useState<ChessTheme>(() => {
@@ -262,7 +312,7 @@ supabase.auth
   async function loadOpeningsFromDb(userId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from("openings")
-      .select("id, name, description, pgn, created_at, leading_side")
+      .select("id, name, description, pgn, created_at, leading_side, parent_id")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
     if (error) {
@@ -282,14 +332,11 @@ supabase.auth
       pgn: row.pgn,
       createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
       leadingSide: (row.leading_side ?? "random") as import("@/lib/openings").LeadingSide,
+      parentId: row.parent_id,
     }))
     // CRITICAL: fully replace local state with Supabase snapshot.
     setOpenings(mapped)
     return true
-  }
-
-  function handleAbsoluteRandom() {
-    setAbsoluteOpen(true)
   }
 
   function clearLegacyLocalStorageOnce(userId: string) {
@@ -581,6 +628,13 @@ supabase.auth
   async function handleAdd(o: Opening): Promise<string | null> {
     if (!user) return "Вы не авторизованы"
     if (openings.length >= OPENINGS_LIMIT) return `Превышен лимит дебютов (максимум ${OPENINGS_LIMIT})`
+    
+    // Check if this ID is already in our local state to prevent accidental double-clicks/race conditions
+    if (openings.some(item => item.id === o.id)) {
+      console.warn("Attempted to add an opening that already exists in local state:", o.id)
+      return null // Already added, ignore
+    }
+
     setIsSaving(true)
     try {
       const { error } = await supabase.from("openings").insert({
@@ -591,11 +645,25 @@ supabase.auth
         pgn: o.pgn,
         leading_side: o.leadingSide ?? "random",
         created_at: new Date(o.createdAt).toISOString(),
+        parent_id: o.parentId,
       })
+      
       if (error) {
+        // If the error is a duplicate key, it means it's already in the DB.
+        // This can happen if the network dropped during a previous successful attempt.
+        if (error.code === "23505") {
+          console.log("Record already exists in DB (duplicate key), sync local state.")
+          setOpenings((prev) => {
+            if (prev.some((item) => item.id === o.id)) return prev
+            return [o, ...prev]
+          })
+          return null
+        }
+        
         toast.error(`Ошибка при сохранении: ${error.message}`)
         return error.message
       }
+
       // Always update from the latest state (avoid stale closure / duplication).
       setOpenings((prev) => {
         if (prev.some((item) => item.id === o.id)) return prev
@@ -655,7 +723,7 @@ supabase.auth
     setIsSaving(true)
 
     try {
-      // First, fetch the opening to be deleted
+      // First, fetch the opening and its mittelspiels
       const { data: openingToDelete, error: fetchError } = await supabase
         .from("openings")
         .select("id, name, description, pgn")
@@ -668,29 +736,40 @@ supabase.auth
         return
       }
 
+      // Find mittelspiels (children)
+      const children = openings.filter(o => o.parentId === id)
+      const idsToDelete = [id, ...children.map(c => c.id)]
+
       // Then, delete from openings
-      const { error: deleteError } = await supabase.from("openings").delete().eq("id", id).eq("user_id", user.id)
+      const { error: deleteError } = await supabase
+        .from("openings")
+        .delete()
+        .in("id", idsToDelete)
+        .eq("user_id", user.id)
 
       if (!deleteError) {
         try {
-          const { data: logData } = await supabase.from("deletion_logs").insert({
+          const logsToInsert = [openingToDelete, ...children].map(o => ({
             user_id: user.id,
-            opening_id: openingToDelete.id,
-            opening_name: openingToDelete.name,
-            opening_pgn: openingToDelete.pgn,
-            opening_description: openingToDelete.description || "",
+            opening_id: o.id,
+            opening_name: o.name,
+            opening_pgn: o.pgn,
+            opening_description: o.description || "",
             deleted_at: new Date().toISOString(),
-          }).select().single()
+          }))
 
-          if (logData) {
-            setDeletionLogs(prev => [{
-              id: logData.id,
-              opening_id: logData.opening_id,
-              opening_name: logData.opening_name,
-              opening_pgn: logData.opening_pgn,
-              opening_description: logData.opening_description,
-              deleted_at: logData.deleted_at
-            }, ...prev])
+          const { data: logsData } = await supabase.from("deletion_logs").insert(logsToInsert).select()
+
+          if (logsData) {
+            const mappedLogs: DeletionLog[] = logsData.map(log => ({
+              id: log.id,
+              opening_id: log.opening_id,
+              opening_name: log.opening_name,
+              opening_pgn: log.opening_pgn,
+              opening_description: log.opening_description,
+              deleted_at: log.deleted_at
+            }))
+            setDeletionLogs(prev => [...mappedLogs, ...prev])
           }
         } catch { /* таблица не создана */ }
       }
@@ -699,18 +778,21 @@ supabase.auth
         toast.error(`Ошибка при удалении: ${deleteError.message}`)
         return
       }
-      setOpenings((prev) => prev.filter((o) => o.id !== id))
+      
+      const idSet = new Set(idsToDelete)
+      setOpenings((prev) => prev.filter((o) => !idSet.has(o.id)))
       
       // Also remove from all collections locally and in DB
       setCollections(prev => prev.map(c => ({
         ...c,
-        openingIds: c.openingIds.filter(oid => oid !== id)
+        openingIds: c.openingIds.filter(oid => !idSet.has(oid))
       })))
       
       // Update collections in DB
       for (const collection of collections) {
-        if (collection.openingIds.includes(id)) {
-          const newIds = collection.openingIds.filter(oid => oid !== id)
+        const hasAny = collection.openingIds.some(oid => idSet.has(oid))
+        if (hasAny) {
+          const newIds = collection.openingIds.filter(oid => !idSet.has(oid))
           await supabase
             .from("collections")
             .update({ opening_ids: newIds })
@@ -719,7 +801,7 @@ supabase.auth
         }
       }
 
-      toast.success("Дебют удален")
+      toast.success(children.length > 0 ? `Дебют и ${children.length} миттельшпилей удалены` : "Дебют удален")
     } finally {
       setIsSaving(false)
     }
@@ -1112,6 +1194,7 @@ supabase.auth
           pgn: o.pgn,
           leading_side: o.leadingSide ?? "random",
           created_at: new Date(o.createdAt).toISOString(),
+          parent_id: o.parentId,
         })
         .eq("id", o.id)
         .eq("user_id", user.id)
@@ -1132,37 +1215,36 @@ supabase.auth
   }
 
 function handleStart(config: SessionConfig) {
-  const isAdvanced = config.mode === "moves" ? config.advanced : false
-  const currentCollectionIds = collectionOpeningIds  // сохраняем до сброса
-  const pool = currentCollectionIds
-    ? openings.filter(o => currentCollectionIds.includes(o.id))
-    : openings
-  const session = buildSession(pool, {
-    count: config.count,
-    advanced: isAdvanced,
-    color: config.color,  // передаём сторону для фильтрации
-  })
-  if (session.length === 0) return
+  // config.openingIds — готовый список id (корневые дебюты + их миттельшпили),
+  // собранный в StartSessionDialog. Сторона определяется per-opening через leadingSide.
+  const byId = new Map(openings.map((o) => [o.id, o]))
+  const chosen: Opening[] = config.openingIds
+    .map((id) => byId.get(id))
+    .filter(Boolean) as Opening[]
+
+  if (chosen.length === 0) return
+
+  // Перемешиваем
+  for (let i = chosen.length - 1; i > 0; i--) {
+    const r = Math.floor(Math.random() * (i + 1))
+    ;[chosen[i], chosen[r]] = [chosen[r], chosen[i]]
+  }
+
+  const session: SessionUnit[] = chosen.map((o) => ({ kind: "single", opening: o }))
+
   setStartOpen(false)
   setScoreEnabled(true)
-  setCollectionOpeningIds(null)
   setGlobalFinishedIds(new Set())
-
-  // "absolute" — случайный выбор стороны для игры при старте
-  const resolvedColor: "white" | "black" | "random" =
-    config.color === "absolute"
-      ? (Math.random() < 0.5 ? "white" : "black")
-      : config.color
 
   setScreenSafe({
     name: "game",
     session,
-    color: resolvedColor,
+    color: "random",
     mode: config.mode,
     isCustom: false,
-    advanced: isAdvanced,
-    collectionOpeningIds: currentCollectionIds,  // добавь
-    
+    advanced: false,
+    collectionOpeningIds: config.openingIds,
+    isRandomColor: true,
   })
 }
 
@@ -1376,7 +1458,6 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
     <>
       {screen.name === "home" && (
         <HomeScreen
-          onAbsoluteRandom={() => handleAbsoluteRandom()}
           openings={openings}
           collections={collections}
           onAdd={handleAdd}
@@ -1412,6 +1493,21 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
             localStorage.setItem("rcd_board_theme", theme.id)
           }}
           isSaving={isSaving}
+          onClearAllData={handleClearAllData}
+          onRestore={handleRestoreSingle}
+          onRestoreAll={handleRestoreAll}
+          onClearAllLogs={handleClearAll}
+          onDetail={(o) => setScreenSafe({ name: "detail", opening: o })}
+          language={language}
+          onLanguageChange={(l) => {
+            setLanguage(l)
+            localStorage.setItem("rcd_language", l)
+          }}
+          pgnFormat={pgnFormat}
+          onPgnFormatChange={(f) => {
+            setPgnFormat(f)
+            localStorage.setItem("rcd_pgn_format", f)
+          }}
         />
       )}
 
@@ -1551,7 +1647,29 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
       )}
 
       {screen.name === "study" && (
-        <StudyScreen opening={screen.opening} onExit={handleExit} theme={currentTheme} initialOrientation={screen.initialOrientation} />
+        <StudyScreen 
+          opening={screen.opening} 
+          onExit={handleExit} 
+          theme={currentTheme} 
+          initialOrientation={screen.initialOrientation} 
+          pgnFormat={pgnFormat}
+        />
+      )}
+      {screen.name === "detail" && (
+        <OpeningDetailScreen
+          opening={screen.opening}
+          mittelspiels={openings.filter(o => o.parentId === screen.opening.id)}
+          onBack={() => setScreenSafe({ name: "home" })}
+          onStudy={(o: Opening) => setScreenSafe({ name: "study", opening: o })}
+          onEdit={(o: Opening) => {
+            setEditingOpening(o)
+            setAddOpen(true)
+          }}
+          onDelete={handleDelete}
+          onAddMittelspiel={handleAdd}
+          currentTheme={currentTheme}
+          isSaving={isSaving}
+        />
       )}
 
       <AddOpeningDialog
@@ -1562,6 +1680,8 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
         }}
         onSave={editingOpening ? handleEdit : handleAdd}
         initialOpening={editingOpening}
+        parentPgn={editingOpening?.parentId ? openings.find(o => o.id === editingOpening.parentId)?.pgn : undefined}
+        parentId={editingOpening?.parentId}
         isSaving={isSaving}
         currentTheme={currentTheme}
       />
@@ -1572,15 +1692,6 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
         onOpenChange={setStartOpen}
         openings={openings}
         onStart={handleStart}
-        isSaving={isSaving}
-      />
-
-      <AbsoluteRandomDialog
-        currentTheme={currentTheme}
-        open={absoluteOpen}
-        onOpenChange={setAbsoluteOpen}
-        openings={openings}
-        onStart={(count) => handleStart({ color: "absolute", count, advanced: false, mode: "moves" })}
         isSaving={isSaving}
       />
 

@@ -9,8 +9,6 @@ import { ChessTheme } from "@/lib/themes"
 import { getStyles } from "@/lib/styles"
 import { LeadingSideIcon } from "./ui/leading-side-icon"
 
-
-
 type Props = {
   opening: Opening
   onDelete: (id: string) => Promise<void>
@@ -22,6 +20,10 @@ type Props = {
   theme: ChessTheme
   isSaving?: boolean
   onLongPress?: (opening: Opening) => void
+  /** Компактный режим: меньший текст, меньшие отступы — для карточек-миттельшпилей в карусели */
+  compact?: boolean
+  /** Скрыть кнопки редактирования и удаления (используется в орбитальных карточках-миттельшпилях) */
+  hideActions?: boolean
 }
 
 export function OpeningCard({
@@ -35,6 +37,8 @@ export function OpeningCard({
   theme,
   isSaving,
   onLongPress,
+  compact = false,
+  hideActions = false,
 }: Props) {
   const [isLongPressing, setIsLongPressing] = useState(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -50,11 +54,6 @@ export function OpeningCard({
   const s = getStyles(theme)
   const parsed = useMemo(() => parsePgn(opening.pgn), [opening.pgn])
 
-  // Determine board orientation:
-  // - explicit white/black → use as-is
-  // - random → infer from final FEN active color:
-  //   if it's black's turn → white made the last move → leading side is white
-  //   if it's white's turn → black made the last move → leading side is black
   const boardOrientation = useMemo((): "white" | "black" => {
     if (opening.leadingSide === "white") return "white"
     if (opening.leadingSide === "black") return "black"
@@ -239,9 +238,9 @@ export function OpeningCard({
           />
         </div>
 
-        {/* Action buttons */}
-        {!isDeleteMode && (
-          <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5 pointer-events-auto">
+        {/* Action buttons — в compact режиме чуть меньше */}
+        {!isDeleteMode && !hideActions && (
+          <div className={`absolute right-1.5 top-1.5 z-20 flex items-center gap-1 pointer-events-auto`}>
             <button
               type="button"
               disabled={isSaving}
@@ -254,9 +253,9 @@ export function OpeningCard({
                 onEdit(opening)
               }}
               aria-label={`Редактировать дебют ${opening.name}`}
-              className="rounded-lg bg-background/90 p-2 text-foreground backdrop-blur-sm transition hover:bg-accent hover:text-accent-foreground shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`rounded-lg bg-background/90 text-foreground backdrop-blur-sm transition hover:bg-accent hover:text-accent-foreground shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${compact ? "p-1" : "p-2"}`}
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className={compact ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} />
             </button>
             <button
               type="button"
@@ -270,9 +269,9 @@ export function OpeningCard({
                 void onDelete(opening.id)
               }}
               aria-label={`Удалить дебют ${opening.name}`}
-              className="rounded-lg bg-background/90 p-2 text-foreground backdrop-blur-sm transition hover:bg-error hover:text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`rounded-lg bg-background/90 text-foreground backdrop-blur-sm transition hover:bg-error hover:text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${compact ? "p-1" : "p-2"}`}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className={compact ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} />
             </button>
           </div>
         )}
@@ -291,35 +290,42 @@ export function OpeningCard({
         }}
       />
 
-      {/* Text */}
+      {/* Text — в compact режиме всё уменьшено */}
       <div
-        className="flex flex-1 flex-col gap-2 p-4"
+        className={`flex flex-1 flex-col ${compact ? "gap-1 p-2" : "gap-2 p-4"}`}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         {...touchHandlers}
       >
-        <div className="flex items-start justify-between gap-1.5">
-          <h3 className="font-bold text-sm leading-snug line-clamp-2 flex-1">
+        <div className="flex items-start justify-between gap-1">
+          <h3 className={`font-bold leading-snug line-clamp-2 flex-1 ${compact ? "text-[10px]" : "text-sm"}`}>
             {opening.name}
           </h3>
           <LeadingSideIcon
             side={opening.leadingSide ?? "random"}
-            size={16}
+            size={compact ? 10 : 16}
             className="shrink-0 mt-0.5"
           />
         </div>
-        <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-          {opening.description || "Без описания"}
-        </p>
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
-          <span className="inline-flex items-center rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
+
+        {/* Описание скрываем в compact — слишком мелко и не читается */}
+        {!compact && (
+          <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+            {opening.description || "Без описания"}
+          </p>
+        )}
+
+        <div className={`mt-auto flex flex-wrap items-center justify-between gap-1 ${compact ? "pt-1" : "pt-2"}`}>
+          <span className={`inline-flex items-center rounded-full bg-primary/15 font-medium text-primary ${compact ? "px-1.5 py-px text-[9px]" : "px-2.5 py-0.5 text-xs"}`}>
             {parsed.fullMoveCount} {pluralMoves(parsed.fullMoveCount)}
           </span>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {updatedLabel}
-          </span>
+          {!compact && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {updatedLabel}
+            </span>
+          )}
           {!parsed.valid && (
-            <span className="inline-flex items-center rounded-full bg-error/15 px-2.5 py-0.5 text-xs font-medium text-error">
+            <span className={`inline-flex items-center rounded-full bg-error/15 font-medium text-error ${compact ? "px-1.5 py-px text-[9px]" : "px-2.5 py-0.5 text-xs"}`}>
               Неверный PGN
             </span>
           )}

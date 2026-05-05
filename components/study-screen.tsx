@@ -23,6 +23,7 @@ type Props = {
   onExit: (fromStudyScreen?: boolean) => void
   theme: ChessTheme
   initialOrientation?: "white" | "black"
+  pgnFormat?: "standard" | "short"
 }
 
 function computeBookPrefix(history: string[], book: string[]): number {
@@ -44,7 +45,7 @@ function fenAtPly(history: string[], ply: number): string {
   return c.fen()
 }
 
-export function StudyScreen({ opening, onExit, theme, initialOrientation = "white" }: Props) {
+export function StudyScreen({ opening, onExit, theme, initialOrientation = "white", pgnFormat = "standard" }: Props) {
   const parsed = useMemo(() => parsePgn(opening.pgn), [opening.pgn])
 
   // Pre-populate history with the full theory line so forward arrow naturally

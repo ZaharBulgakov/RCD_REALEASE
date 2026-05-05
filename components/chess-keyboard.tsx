@@ -42,7 +42,7 @@ export function ChessKeyboard({ onKeyPress, onDelete, onSpace, className = "" }:
   }, [deleteInterval])
 
   return (
-    <div className={`flex flex-col gap-1.5 p-2 bg-background rounded-xl border border-border shadow-md w-full ${className}`}>
+    <div className={`flex flex-col gap-1.5 p-2 bg-muted/30 rounded-xl border-2 border-border shadow-inner w-full ${className}`}>
       {rows.map((row, i) => (
         <div key={i} className="flex justify-center gap-1 w-full">
           {row.map((key) => (
@@ -50,8 +50,8 @@ export function ChessKeyboard({ onKeyPress, onDelete, onSpace, className = "" }:
               key={key}
               type="button"
               onClick={() => onKeyPress(key)}
-              className="flex-1 h-10 min-w-0 rounded-lg bg-card border border-border text-sm font-bold transition
-                hover:bg-accent hover:border-primary/50 active:scale-95 flex items-center justify-center shadow-sm"
+              className="flex-1 h-10 min-w-0 rounded-lg bg-card border-2 border-border text-sm font-bold transition
+                hover:bg-accent hover:border-primary active:scale-95 active:bg-accent/70 flex items-center justify-center shadow-sm"
             >
               {key}
             </button>
@@ -62,8 +62,8 @@ export function ChessKeyboard({ onKeyPress, onDelete, onSpace, className = "" }:
         <button
           type="button"
           onClick={onSpace}
-          className="flex-[2] h-10 min-w-0 rounded-lg bg-card border border-border text-sm font-bold transition
-            hover:bg-accent hover:border-primary/50 active:scale-95 flex items-center justify-center shadow-sm"
+          className="flex-[2] h-10 min-w-0 rounded-lg bg-card border-2 border-border text-sm font-bold transition
+            hover:bg-accent hover:border-primary active:scale-95 flex items-center justify-center shadow-sm"
         >
           Space
         </button>
@@ -80,8 +80,8 @@ export function ChessKeyboard({ onKeyPress, onDelete, onSpace, className = "" }:
             e.preventDefault()
             stopDeleting()
           }}
-          className="flex-1 h-10 min-w-0 rounded-lg bg-card border border-border text-foreground font-bold transition
-            hover:bg-accent hover:border-primary/50 active:scale-95 flex items-center justify-center shadow-sm"
+          className="flex-1 h-10 min-w-0 rounded-lg bg-card border-2 border-border text-foreground font-bold transition
+            hover:bg-accent hover:border-primary active:scale-95 flex items-center justify-center shadow-sm"
         >
           <Delete className="h-4 w-4" />
         </button>
