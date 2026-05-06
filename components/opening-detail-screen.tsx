@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen, PanelRight } from "lucide-react"
+import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen } from "lucide-react"
 import { OpeningCard } from "./opening-card"
 import { type Opening, parsePgn } from "@/lib/openings"
 import { Button } from "./ui/button"
@@ -165,14 +165,7 @@ export function OpeningDetailScreen({
         <h1 className="text-[11px] sm:text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
           {opening.name.toUpperCase()}
         </h1>
-        <button
-          onClick={() => setPanelOpen(v => !v)}
-          className={`hidden md:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-wide transition
-            ${panelOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5"}`}
-          title={panelOpen ? "Скрыть панель" : "Показать панель"}
-        >
-          <PanelRight className="h-4 w-4" />
-        </button>
+        <div className="w-24" />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -404,8 +397,38 @@ export function OpeningDetailScreen({
           </div>
         </div>
 
-        {/* ПРАВАЯ ПАНЕЛЬ */}
-        <aside className={`hidden md:flex flex-col border-l border-border bg-card/20 shrink-0 transition-all duration-300 overflow-hidden ${panelOpen ? "w-96" : "w-0 border-l-0"}`}>
+        {/* ПРАВАЯ ПАНЕЛЬ — с триггером на границе */}
+        <div className="relative hidden md:flex shrink-0">
+          {/* Треугольник-триггер — всегда виден, сидит на левой границе панели */}
+          <button
+            onClick={() => setPanelOpen(v => !v)}
+            className="absolute -left-4 top-1/2 -translate-y-1/2 z-40 flex h-10 w-4 items-center justify-center group"
+            title={panelOpen ? "Скрыть панель" : "Показать панель"}
+          >
+            <svg
+              width="16" height="40" viewBox="0 0 16 40"
+              className="transition-all duration-300 drop-shadow-lg"
+            >
+              {/* Фон-таб */}
+              <path
+                d={panelOpen
+                  ? "M16,0 Q4,8 2,20 Q4,32 16,40 Z"
+                  : "M0,0 Q12,8 14,20 Q12,32 0,40 Z"}
+                className="fill-card stroke-border group-hover:fill-primary/20 transition-all duration-300"
+                strokeWidth="1"
+              />
+              {/* Стрелка */}
+              <polyline
+                points={panelOpen ? "10,14 5,20 10,26" : "6,14 11,20 6,26"}
+                className="stroke-primary group-hover:stroke-primary transition-colors duration-300"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </svg>
+          </button>
+          <aside className={`flex flex-col border-l border-border bg-card/20 transition-all duration-300 overflow-hidden ${panelOpen ? "w-96" : "w-0 border-l-0"}`}>
           {/* Доска — фиксированный квадрат сверху */}
           <div className="shrink-0 p-6 pb-0">
             <div className="aspect-square w-full overflow-hidden rounded-3xl border border-border bg-card shadow-2xl" style={accentGlow}>
@@ -478,7 +501,8 @@ export function OpeningDetailScreen({
               Удалить
             </Button>
           </div>
-        </aside>
+          </aside>
+        </div>
       </div>
 
       {/* Модалки */}
