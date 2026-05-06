@@ -158,15 +158,15 @@ export function OpeningDetailScreen({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/50 px-3 sm:px-6 backdrop-blur-md z-50">
-        <Button variant="ghost" onClick={onBack} className="gap-1 sm:gap-2 rounded-xl font-bold uppercase tracking-wide sm:tracking-widest px-2 sm:px-4 text-[10px] sm:text-xs sm:text-sm">
+      <header className="relative flex h-14 shrink-0 items-center justify-center border-b border-border bg-card/50 px-3 sm:px-6 backdrop-blur-md z-50">
+        <Button variant="ghost" onClick={onBack} className="hidden sm:flex absolute left-3 gap-1 sm:gap-2 rounded-xl font-bold uppercase tracking-wide sm:tracking-widest px-2 sm:px-4 text-[10px] sm:text-xs sm:text-sm">
           <ArrowLeft className="h-5 w-5" />
           Назад
         </Button>
         <h1 className="text-[11px] sm:text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
           {opening.name.toUpperCase()}
         </h1>
-        <div className="hidden sm:block w-24" />
+        
       </header>
 
       <div className="flex flex-1 overflow-hidden">
