@@ -113,6 +113,7 @@ export function HomeScreen({
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [feedbackSaving, setFeedbackSaving] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
@@ -546,6 +547,13 @@ export function HomeScreen({
           <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Фидбек</span>
         </button>
         <button
+          onClick={() => setMobileSettingsOpen(true)}
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
+        >
+          <Settings className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Настройки</span>
+        </button>
+        <button
           onClick={onLogout}
           className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-error"
         >
@@ -625,6 +633,99 @@ export function HomeScreen({
               isSaving={isSaving} 
               currentTheme={currentTheme} 
             />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Мобильный диалог настроек */}
+      <Dialog open={mobileSettingsOpen} onOpenChange={setMobileSettingsOpen}>
+        <DialogContent className="rounded-2xl border-border bg-card p-0 w-[90vw] max-w-sm" style={accentGlow}>
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
+            <DialogTitle className="flex items-center gap-2 text-base font-black">
+              <Settings className="h-4 w-4 text-primary" />
+              Настройки
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-5 p-5">
+
+            {/* Тема */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Тема оформления</Label>
+              <Button
+                variant="outline"
+                className="h-10 w-full justify-between rounded-xl px-4"
+                onClick={() => { setMobileSettingsOpen(false); setThemeDialogOpen(true) }}
+                style={accentGlow}
+              >
+                <div className="flex items-center gap-2">
+                  <Paintbrush className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">{currentTheme.name}</span>
+                </div>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </div>
+
+            {/* Язык */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Язык интерфейса</Label>
+              <div className="flex rounded-xl bg-accent/20 p-1">
+                <button
+                  onClick={() => onLanguageChange("ru")}
+                  className={cn(
+                    "flex-1 rounded-lg py-2 text-xs font-bold uppercase transition",
+                    language === "ru" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  RU
+                </button>
+                <button
+                  onClick={() => onLanguageChange("en")}
+                  className={cn(
+                    "flex-1 rounded-lg py-2 text-xs font-bold uppercase transition",
+                    language === "en" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  EN
+                </button>
+              </div>
+            </div>
+
+            {/* Формат PGN */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Формат записи PGN</Label>
+              <Select value={pgnFormat} onValueChange={(v: any) => onPgnFormatChange(v)}>
+                <SelectTrigger className="h-10 rounded-xl bg-accent/20 border-none font-semibold text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-card">
+                  <SelectItem value="standard" className="rounded-lg">Стандартный</SelectItem>
+                  <SelectItem value="short" className="rounded-lg">Краткий</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Профиль */}
+            <div className="rounded-xl border border-border bg-card/50 p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <UserCircle2 className="h-5 w-5 text-primary shrink-0" />
+                <span className="text-xs font-medium truncate">{userEmail}</span>
+              </div>
+              <span className="text-xs font-black text-primary ml-3 shrink-0">
+                {record !== null ? Math.round(record) : 0} rec
+              </span>
+            </div>
+
+            {/* Опасная зона */}
+            <div className="pt-1 border-t border-border flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                className="h-9 w-full justify-start gap-2 rounded-xl px-3 text-xs font-semibold text-error hover:bg-error/10 hover:text-error"
+                onClick={onClearAllData}
+              >
+                <Trash2 className="h-4 w-4" />
+                Удалить все данные
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
