@@ -26,15 +26,15 @@ type Props = {
 }
 
 // Размеры — единый источник правды, чтобы линии точно совпадали с карточками
-const CENTER_CARD_W = 160  // w-40
-const MITTEL_CARD_W = 100  // w-25
-const ORBIT_RADIUS = 180   // px от центра до центра карточки-миттельшпиля
+const CENTER_CARD_W = 208  // w-52
+const MITTEL_CARD_W = 144  // w-36
+const ORBIT_RADIUS = 240   // px от центра до центра карточки-миттельшпиля
 const CAROUSEL_SIZE = ORBIT_RADIUS * 2 + MITTEL_CARD_W + 16 // +16 запас
 
 // Мобильная карусель — вписывается в ~360px экран
-const MOB_CENTER_W = 100
-const MOB_MITTEL_W = 72
-const MOB_ORBIT = 128
+const MOB_CENTER_W = 76
+const MOB_MITTEL_W = 54
+const MOB_ORBIT = 100
 const MOB_CAROUSEL_SIZE = MOB_ORBIT * 2 + MOB_MITTEL_W + 8
 
 export function OpeningDetailScreen({
