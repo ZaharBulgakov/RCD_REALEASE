@@ -328,65 +328,88 @@ export function OpeningDetailScreen({
             </div>
           </div>
 
-          {/* Мобильный список миттельшпилей — только на мобильном */}
+          {/* Мобильный вид — только на мобильном */}
           <div className="flex flex-1 flex-col overflow-hidden sm:hidden">
-            {/* Центральный дебют — компактный, половина ширины экрана */}
-            <div className="shrink-0 px-4 pt-3 pb-2 flex justify-center">
-              <div style={{ ...accentGlow, borderRadius: 12, fontSize: "0.75rem" }} className="w-48">
-                <OpeningCard
-                  opening={opening}
-                  onDelete={async () => setDeleteId(opening.id)}
-                  onEdit={onEdit}
-                  onStudy={() => setSelectedMittelspiel(null)}
-                  theme={currentTheme}
-                  isSaving={isSaving}
-                  isSelected={isMainOpening}
-                  compact
-                  hideActions
-                />
-              </div>
-            </div>
-            {/* Линия-разделитель */}
-            {filteredMittelspiels.length > 0 && (
-              <div className="flex items-center gap-3 px-4 py-1.5 shrink-0">
-                <div className="h-px flex-1 bg-white/10" />
-                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Миттельшпили ({filteredMittelspiels.length})
-                </span>
-                <div className="h-px flex-1 bg-white/10" />
-              </div>
-            )}
-            {/* Список миттельшпилей — 2 колонки компактных карточек */}
-            <div className="flex-1 overflow-y-auto px-3 pb-4">
-              <div className="grid grid-cols-2 gap-2">
-                {filteredMittelspiels.map((m) => {
-                  const isSelected = selectedMittelspiel?.id === m.id
-                  return (
-                    <div key={m.id} style={isSelected ? accentGlow : undefined} className="rounded-xl" >
-                      <div style={{ fontSize: "0.7rem" }} className="mittel-card-wrapper">
-                        <OpeningCard
-                          opening={m}
-                          onDelete={async () => setDeleteId(m.id)}
-                          onEdit={onEdit}
-                          onStudy={() => setSelectedMittelspiel(m)}
-                          theme={currentTheme}
-                          isSaving={isSaving}
-                          isSelected={isSelected}
-                          compact
-                          hideActions
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              {filteredMittelspiels.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                  <p className="text-[11px]">Нет миттельшпилей</p>
-                  <p className="text-[10px] mt-1">Нажмите «+» чтобы добавить</p>
+
+            {/* Центральный дебют + миттельшпили в одном горизонтальном ряду */}
+            <div className="flex-1 flex flex-col justify-center overflow-hidden py-2">
+
+              {/* Строка: центральная карточка слева, линия, миттельшпили скроллятся вправо */}
+              <div className="flex items-center gap-0 overflow-hidden">
+
+                {/* Центральная карточка — фиксированная ширина, shrink-0 */}
+                <div className="shrink-0 pl-3 pr-2">
+                  <div style={{ ...accentGlow, borderRadius: 12, fontSize: "0.72rem", width: 130 }}>
+                    <OpeningCard
+                      opening={opening}
+                      onDelete={async () => setDeleteId(opening.id)}
+                      onEdit={onEdit}
+                      onStudy={() => setSelectedMittelspiel(null)}
+                      theme={currentTheme}
+                      isSaving={isSaving}
+                      isSelected={isMainOpening}
+                      compact
+                      hideActions
+                    />
+                  </div>
                 </div>
+
+                {/* Пунктирная линия-коннектор */}
+                <div className="shrink-0 flex items-center" style={{ width: 24 }}>
+                  <svg width="24" height="2" viewBox="0 0 24 2">
+                    <line x1="0" y1="1" x2="24" y2="1" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeDasharray="4 3" />
+                  </svg>
+                </div>
+
+                {/* Горизонтальный скролл миттельшпилей */}
+                <div className="flex-1 overflow-x-auto overflow-y-hidden">
+                  <div className="flex gap-2 pr-3" style={{ width: "max-content" }}>
+                    {filteredMittelspiels.map((m) => {
+                      const isSelected = selectedMittelspiel?.id === m.id
+                      return (
+                        <div
+                          key={m.id}
+                          style={{
+                            ...(isSelected ? accentGlow : {}),
+                            borderRadius: 10,
+                            fontSize: "0.68rem",
+                            width: 110,
+                            flexShrink: 0,
+                          }}
+                          className="mittel-card-wrapper"
+                        >
+                          <OpeningCard
+                            opening={m}
+                            onDelete={async () => setDeleteId(m.id)}
+                            onEdit={onEdit}
+                            onStudy={() => setSelectedMittelspiel(m)}
+                            theme={currentTheme}
+                            isSaving={isSaving}
+                            isSelected={isSelected}
+                            compact
+                            hideActions
+                          />
+                        </div>
+                      )
+                    })}
+                    {filteredMittelspiels.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center text-muted-foreground">
+                        <p className="text-[10px]">Нет миттельшпилей</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Подсказка скролла */}
+              {filteredMittelspiels.length > 2 && (
+                <p className="text-center text-[9px] text-muted-foreground/50 mt-2 tracking-wide">
+                  ← листайте миттельшпили →
+                </p>
               )}
             </div>
+
           </div>
 
         </main>
