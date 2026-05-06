@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen } from "lucide-react"
+import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen, Eye, X } from "lucide-react"
 import { OpeningCard } from "./opening-card"
 import { type Opening, parsePgn } from "@/lib/openings"
 import { Button } from "./ui/button"
@@ -47,6 +47,7 @@ export function OpeningDetailScreen({
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
+  const [previewOpen, setPreviewOpen] = useState(false)
   // Web Animations API refs для плавного управления скоростью карусели
   const carouselRef = useRef<HTMLDivElement | null>(null)
   const cardRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -382,19 +383,44 @@ export function OpeningDetailScreen({
 
         </main>
 
-        {/* Мобильная нижняя панель с поиском */}
-        <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card/80 px-4 py-3 backdrop-blur-md sm:hidden">
-          <div className="group relative w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск миттельшпилей..."
-              className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-4 text-[11px] sm:text-sm outline-none transition focus:border-primary"
-              style={accentGlow}
-            />
-          </div>
+        {/* Мобильная нижняя панель действий */}
+        <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-2 py-2 backdrop-blur-md sm:hidden">
+          <button
+            onClick={onBack}
+            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Назад</span>
+          </button>
+          <button
+            onClick={() => setPreviewOpen(true)}
+            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+          >
+            <Eye className="h-5 w-5" />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Посмотреть</span>
+          </button>
+          <button
+            onClick={() => onStudy(activeOpening)}
+            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition"
+            style={{ color: s.accent }}
+          >
+            <BookOpen className="h-5 w-5" />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Изучать</span>
+          </button>
+          <button
+            onClick={() => onEdit(activeOpening)}
+            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+          >
+            <Pencil className="h-5 w-5" />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Редактировать</span>
+          </button>
+          <button
+            onClick={() => setDeleteId(activeOpening.id)}
+            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-error"
+          >
+            <Trash2 className="h-5 w-5" />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Удалить</span>
+          </button>
         </div>
 
         {/* ПРАВАЯ ПАНЕЛЬ — с триггером на границе */}
