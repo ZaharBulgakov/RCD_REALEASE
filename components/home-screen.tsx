@@ -254,7 +254,7 @@ export function HomeScreen({
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
       <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-card/50 backdrop-blur-md z-50">
-        <h1 className="text-[10px] sm:text-xs sm:text-base font-black tracking-[0.2em] text-primary sm:text-xl md:text-2xl">
+        <h1 className="text-[20px] sm:text-xs sm:text-base font-black tracking-[0.2em] text-primary sm:text-xl md:text-2xl">
           RANDOM CHESS DEBUT
         </h1>
       </header>
