@@ -61,6 +61,7 @@ export function OpeningDetailScreen({
   const [previewOpen, setPreviewOpen] = useState(false)
   // Web Animations API refs для плавного управления скоростью карусели
   const carouselRef = useRef<HTMLDivElement | null>(null)
+  const mobCarouselRef = useRef<HTMLDivElement | null>(null)
   const cardRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
   const rateRafRef = useRef<number | null>(null)
   const rateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -121,6 +122,7 @@ export function OpeningDetailScreen({
 
     const anims: Animation[] = []
     if (carouselRef.current) anims.push(...carouselRef.current.getAnimations())
+    if (mobCarouselRef.current) anims.push(...mobCarouselRef.current.getAnimations())
     cardRefsMap.current.forEach((el) => anims.push(...el.getAnimations()))
     if (anims.length === 0) return
 
@@ -350,8 +352,6 @@ export function OpeningDetailScreen({
 
           {/* Мобильная круговая карусель — только на мобильном */}
           <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden">
-            <div style={{background:"red",color:"white",padding:"8px",fontWeight:"bold",width:"100%",textAlign:"center"}}>НОВЫЙ КОД РАБОТАЕТ</div>
-
             {/* Поиск */}
             <div className="shrink-0 w-full px-4 pt-1 pb-2">
               <div className="relative w-full">
@@ -373,7 +373,7 @@ export function OpeningDetailScreen({
               >
                 {/* Вращающийся контейнер */}
                 <div
-                  ref={carouselRef}
+                  ref={mobCarouselRef}
                   className="absolute inset-0"
                   style={{ animation: "carousel-spin 20s linear infinite" }}
                 >
