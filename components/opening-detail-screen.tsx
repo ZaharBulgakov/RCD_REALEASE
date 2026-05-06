@@ -166,7 +166,7 @@ export function OpeningDetailScreen({
         <h1 className="text-[11px] sm:text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
           {opening.name.toUpperCase()}
         </h1>
-        <div className="w-24" />
+        <div className="hidden sm:block w-24" />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -331,8 +331,8 @@ export function OpeningDetailScreen({
           {/* Мобильный список миттельшпилей — только на мобильном */}
           <div className="flex flex-1 flex-col overflow-hidden sm:hidden">
             {/* Центральный дебют */}
-            <div className="shrink-0 px-4 pt-12 pb-2">
-              <div style={{ ...accentGlow, borderRadius: 12 }}>
+            <div className="shrink-0 px-4 pt-12 pb-2 flex justify-center">
+              <div style={{ ...accentGlow, borderRadius: 12 }} className="w-full max-w-xs">
                 <OpeningCard
                   opening={opening}
                   onDelete={async () => setDeleteId(opening.id)}
