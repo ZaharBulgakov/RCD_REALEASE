@@ -292,35 +292,35 @@ export function OpeningCard({
 
       {/* Text — в compact режиме всё уменьшено */}
       <div
-        className={`flex flex-1 flex-col ${compact ? "gap-1 p-2" : "gap-2 p-4"}`}
+        className={`flex flex-1 flex-col ${compact ? "gap-1 p-1.5" : "gap-1.5 p-2.5 sm:p-4"}`}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         {...touchHandlers}
       >
         <div className="flex items-start justify-between gap-1">
-          <h3 className={`font-bold leading-snug line-clamp-2 flex-1 ${compact ? "text-[10px]" : "text-sm"}`}>
+          <h3 className={`font-bold leading-snug line-clamp-2 flex-1 ${compact ? "text-[10px]" : "text-[11px] sm:text-sm"}`}>
             {opening.name}
           </h3>
           <LeadingSideIcon
             side={opening.leadingSide ?? "random"}
-            size={compact ? 10 : 16}
+            size={compact ? 10 : 12}
             className="shrink-0 mt-0.5"
           />
         </div>
 
         {/* Описание скрываем в compact — слишком мелко и не читается */}
         {!compact && (
-          <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+          <p className="line-clamp-2 text-[10px] sm:text-sm leading-relaxed text-muted-foreground">
             {opening.description || "Без описания"}
           </p>
         )}
 
         <div className={`mt-auto flex flex-wrap items-center justify-between gap-1 ${compact ? "pt-1" : "pt-2"}`}>
-          <span className={`inline-flex items-center rounded-full bg-primary/15 font-medium text-primary ${compact ? "px-1.5 py-px text-[9px]" : "px-2.5 py-0.5 text-xs"}`}>
+          <span className={`inline-flex items-center rounded-full bg-primary/15 font-medium text-primary ${compact ? "px-1.5 py-px text-[9px]" : "px-1.5 py-px text-[9px] sm:px-2.5 sm:py-0.5 sm:text-xs"}`}>
             {parsed.fullMoveCount} {pluralMoves(parsed.fullMoveCount)}
           </span>
           {!compact && (
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="text-[9px] sm:text-xs text-muted-foreground tabular-nums">
               {updatedLabel}
             </span>
           )}

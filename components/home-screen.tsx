@@ -311,7 +311,7 @@ export function HomeScreen({
         {/* ЦЕНТРАЛЬНАЯ ЧАСТЬ: ЛЕНТА ДЕБЮТОВ */}
         <main className="relative flex flex-1 flex-col overflow-hidden bg-accent/5">
           {/* Верхние кнопки управления */}
-          <div className="flex items-center justify-center gap-2 px-4 py-3 sm:gap-4 sm:p-6 shrink-0">
+          <div className="flex items-center justify-center gap-2 px-3 py-2 sm:gap-4 sm:p-6 shrink-0">
             <Button 
               onClick={onStart} 
               disabled={openings.length === 0}
