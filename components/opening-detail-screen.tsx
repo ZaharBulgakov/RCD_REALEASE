@@ -355,7 +355,7 @@ export function OpeningDetailScreen({
               </div>
             )}
             {/* Список миттельшпилей */}
-            <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
               {filteredMittelspiels.map((m) => {
                 const isSelected = selectedMittelspiel?.id === m.id
                 return (
@@ -382,46 +382,6 @@ export function OpeningDetailScreen({
           </div>
 
         </main>
-
-        {/* Мобильная нижняя панель действий */}
-        <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-2 py-2 backdrop-blur-md sm:hidden">
-          <button
-            onClick={onBack}
-            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Назад</span>
-          </button>
-          <button
-            onClick={() => setPreviewOpen(true)}
-            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
-          >
-            <Eye className="h-5 w-5" />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Посмотреть</span>
-          </button>
-          <button
-            onClick={() => onStudy(activeOpening)}
-            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition"
-            style={{ color: s.accent }}
-          >
-            <BookOpen className="h-5 w-5" />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Изучать</span>
-          </button>
-          <button
-            onClick={() => onEdit(activeOpening)}
-            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
-          >
-            <Pencil className="h-5 w-5" />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Редактировать</span>
-          </button>
-          <button
-            onClick={() => setDeleteId(activeOpening.id)}
-            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-error"
-          >
-            <Trash2 className="h-5 w-5" />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Удалить</span>
-          </button>
-        </div>
 
         {/* ПРАВАЯ ПАНЕЛЬ — с триггером на границе */}
         <div className="relative hidden md:flex shrink-0">
@@ -529,6 +489,46 @@ export function OpeningDetailScreen({
           </div>
           </aside>
         </div>
+      </div>
+
+      {/* Мобильная нижняя панель действий — вне overflow-hidden, прижата к низу */}
+      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-2 py-2 backdrop-blur-md sm:hidden">
+        <button
+          onClick={onBack}
+          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Назад</span>
+        </button>
+        <button
+          onClick={() => setPreviewOpen(true)}
+          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+        >
+          <Eye className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Посмотреть</span>
+        </button>
+        <button
+          onClick={() => onStudy(activeOpening)}
+          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition"
+          style={{ color: s.accent }}
+        >
+          <BookOpen className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Изучать</span>
+        </button>
+        <button
+          onClick={() => onEdit(activeOpening)}
+          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+        >
+          <Pencil className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Редактировать</span>
+        </button>
+        <button
+          onClick={() => setDeleteId(activeOpening.id)}
+          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-error"
+        >
+          <Trash2 className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Удалить</span>
+        </button>
       </div>
 
       {/* Модалки */}
