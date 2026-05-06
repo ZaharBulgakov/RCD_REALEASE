@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen } from "lucide-react"
+import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen, PanelRight } from "lucide-react"
 import { OpeningCard } from "./opening-card"
 import { type Opening, parsePgn } from "@/lib/openings"
 import { Button } from "./ui/button"
@@ -46,6 +46,7 @@ export function OpeningDetailScreen({
   const [query, setQuery] = useState("")
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [panelOpen, setPanelOpen] = useState(true)
   // Web Animations API refs для плавного управления скоростью карусели
   const carouselRef = useRef<HTMLDivElement | null>(null)
   const cardRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -164,7 +165,14 @@ export function OpeningDetailScreen({
         <h1 className="text-[11px] sm:text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
           {opening.name.toUpperCase()}
         </h1>
-        <div className="w-24" />
+        <button
+          onClick={() => setPanelOpen(v => !v)}
+          className={`hidden md:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-wide transition
+            ${panelOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5"}`}
+          title={panelOpen ? "Скрыть панель" : "Показать панель"}
+        >
+          <PanelRight className="h-4 w-4" />
+        </button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -397,7 +405,7 @@ export function OpeningDetailScreen({
         </div>
 
         {/* ПРАВАЯ ПАНЕЛЬ */}
-        <aside className="hidden w-96 flex-col border-l border-border bg-card/20 md:flex shrink-0">
+        <aside className={`hidden md:flex flex-col border-l border-border bg-card/20 shrink-0 transition-all duration-300 overflow-hidden ${panelOpen ? "w-96" : "w-0 border-l-0"}`}>
           {/* Доска — фиксированный квадрат сверху */}
           <div className="shrink-0 p-6 pb-0">
             <div className="aspect-square w-full overflow-hidden rounded-3xl border border-border bg-card shadow-2xl" style={accentGlow}>
