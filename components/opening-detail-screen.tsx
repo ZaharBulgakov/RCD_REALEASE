@@ -157,11 +157,11 @@ export function OpeningDetailScreen({
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/50 px-3 sm:px-6 backdrop-blur-md z-50">
-        <Button variant="ghost" onClick={onBack} className="gap-1 sm:gap-2 rounded-xl font-bold uppercase tracking-widest px-2 sm:px-4 text-xs sm:text-sm">
+        <Button variant="ghost" onClick={onBack} className="gap-1 sm:gap-2 rounded-xl font-bold uppercase tracking-wide sm:tracking-widest px-2 sm:px-4 text-[10px] sm:text-xs sm:text-sm">
           <ArrowLeft className="h-5 w-5" />
           Назад
         </Button>
-        <h1 className="text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
+        <h1 className="text-[11px] sm:text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
           {opening.name.toUpperCase()}
         </h1>
         <div className="w-24" />
@@ -175,7 +175,7 @@ export function OpeningDetailScreen({
           <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
             <Button
               onClick={() => setAddDialogOpen(true)}
-              className="h-8 sm:h-10 rounded-full px-3 sm:px-6 text-[10px] sm:text-xs font-bold uppercase tracking-widest"
+              className="h-8 sm:h-10 rounded-full px-3 sm:px-6 text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-widest"
               style={accentGlow}
             >
               <Plus className="mr-2 h-3.5 w-3.5" />
@@ -320,7 +320,7 @@ export function OpeningDetailScreen({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Поиск миттельшпилей..."
-                className="h-10 w-full rounded-full border border-border bg-card pl-11 pr-5 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
+                className="h-10 w-full rounded-full border border-border bg-card pl-11 pr-5 text-[11px] sm:text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
                 style={accentGlow}
               />
             </div>
@@ -346,7 +346,7 @@ export function OpeningDetailScreen({
             {filteredMittelspiels.length > 0 && (
               <div className="flex items-center gap-3 px-4 py-2 shrink-0">
                 <div className="h-px flex-1 bg-white/10" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <span className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">
                   Миттельшпили ({filteredMittelspiels.length})
                 </span>
                 <div className="h-px flex-1 bg-white/10" />
@@ -372,8 +372,8 @@ export function OpeningDetailScreen({
               })}
               {filteredMittelspiels.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                  <p className="text-sm">Нет миттельшпилей</p>
-                  <p className="text-xs mt-1">Нажмите «+» чтобы добавить</p>
+                  <p className="text-[11px] sm:text-sm">Нет миттельшпилей</p>
+                  <p className="text-[10px] sm:text-xs mt-1">Нажмите «+» чтобы добавить</p>
                 </div>
               )}
             </div>
@@ -390,7 +390,7 @@ export function OpeningDetailScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск миттельшпилей..."
-              className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-4 text-sm outline-none transition focus:border-primary"
+              className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-4 text-[11px] sm:text-sm outline-none transition focus:border-primary"
               style={accentGlow}
             />
           </div>
@@ -420,22 +420,22 @@ export function OpeningDetailScreen({
           <div className="shrink-0 px-6 pt-5">
             <div className="rounded-2xl border border-border bg-card/50 p-4 space-y-1">
               <div className="flex items-center gap-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <p className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">
                   {isMainOpening ? "Основной дебют" : "Миттельшпиль"}
                 </p>
               </div>
-              <h2 className="text-lg font-black truncate tracking-tight">{activeOpening.name}</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground pt-1">
+              <h2 className="text-[10px] sm:text-xs sm:text-lg font-black truncate tracking-tight">{activeOpening.name}</h2>
+              <p className="text-[11px] sm:text-sm leading-relaxed text-muted-foreground pt-1">
                 {activeOpening.description || "Нет описания"}
               </p>
               <div className="flex gap-4 pt-2">
                 <div>
-                  <span className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ходов</span>
-                  <span className="text-base font-black text-primary">{activeParsed.moveCount}</span>
+                  <span className="block text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">Ходов</span>
+                  <span className="text-[10px] sm:text-xs sm:text-base font-black text-primary">{activeParsed.moveCount}</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Сторона</span>
-                  <span className="text-base font-black text-primary uppercase">
+                  <span className="block text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">Сторона</span>
+                  <span className="text-[10px] sm:text-xs sm:text-base font-black text-primary uppercase">
                     {activeOpening.leadingSide === "random" ? "Случ" : activeOpening.leadingSide === "white" ? "Бел" : "Чер"}
                   </span>
                 </div>
@@ -447,7 +447,7 @@ export function OpeningDetailScreen({
           <div className="shrink-0 px-6 pt-4 pb-6 space-y-3">
             <Button
               onClick={() => onStudy(activeOpening)}
-              className="w-full h-14 gap-3 rounded-2xl text-base font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+              className="w-full h-14 gap-3 rounded-2xl text-[10px] sm:text-xs sm:text-base font-black uppercase tracking-wide sm:tracking-widest shadow-lg shadow-primary/20"
               style={accentGlow}
             >
               <BookOpen className="h-5 w-5" />
@@ -456,7 +456,7 @@ export function OpeningDetailScreen({
             <Button
               variant="outline"
               onClick={() => onEdit(activeOpening)}
-              className="w-full h-12 rounded-2xl font-bold uppercase tracking-widest"
+              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wide sm:tracking-widest"
             >
               <Pencil className="h-4 w-4 mr-2" />
               Редактировать
@@ -464,7 +464,7 @@ export function OpeningDetailScreen({
             <Button
               variant="ghost"
               onClick={() => setDeleteId(activeOpening.id)}
-              className="w-full h-12 rounded-2xl font-bold uppercase tracking-widest text-error hover:bg-error/10 hover:text-error"
+              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wide sm:tracking-widest text-error hover:bg-error/10 hover:text-error"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Удалить
@@ -478,8 +478,8 @@ export function OpeningDetailScreen({
         <DialogContent className="rounded-3xl border-border bg-card p-0 overflow-hidden dialog-wide flex flex-col" style={accentGlow}>
           {/* Header — fixed */}
           <div className="px-8 py-6 border-b border-border text-center shrink-0">
-            <DialogTitle className="text-2xl font-black uppercase tracking-wider text-center">Добавить миттельшпиль</DialogTitle>
-            <DialogDescription className="text-center text-sm text-muted-foreground mt-1">
+            <DialogTitle className="text-[10px] sm:text-xs sm:text-base sm:text-2xl font-black uppercase tracking-normal sm:tracking-wider text-center">Добавить миттельшпиль</DialogTitle>
+            <DialogDescription className="text-center text-[11px] sm:text-sm text-muted-foreground mt-1">
               Для этого миттельшпиля автоматически будет добавлен префикс:{" "}
               <span className="font-mono text-primary">{opening.pgn}</span>
             </DialogDescription>
@@ -504,7 +504,7 @@ export function OpeningDetailScreen({
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <DialogContent className="rounded-3xl border-border bg-card" style={accentGlow}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+            <DialogTitle className="flex items-center gap-2 text-[11px] sm:text-sm sm:text-xl font-bold">
               <AlertTriangle className="h-5 w-5 text-error" />
               {deleteId === opening.id ? "Удалить основной дебют?" : "Удалить миттельшпиль?"}
             </DialogTitle>
@@ -534,7 +534,7 @@ export function OpeningDetailScreen({
         /* Уменьшаем бейджи внутри карточек миттельшпилей */
         .mittel-card-wrapper [class*="badge"],
         .mittel-card-wrapper [class*="Badge"],
-        .mittel-card-wrapper span[class*="text-xs"],
+        .mittel-card-wrapper span[class*="text-[10px] sm:text-xs"],
         .mittel-card-wrapper span[class*="rounded"],
         .mittel-card-wrapper div[class*="rounded-full"] {
           font-size: 0.55rem !important;

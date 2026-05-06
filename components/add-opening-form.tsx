@@ -550,7 +550,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
             <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0">
               {isEditMode ? <Pencil className="h-4 w-4" /> : <Plus className="h-5 w-5" />}
             </div>
-            <h3 className="font-bold text-lg tracking-tight whitespace-nowrap">
+            <h3 className="font-bold text-[10px] sm:text-xs sm:text-lg tracking-tight whitespace-nowrap">
               {isEditMode ? "Редактировать дебют" : "Добавить новый дебют"}
             </h3>
           </div>
@@ -585,7 +585,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
           {/* LEFT COLUMN: Name, Description, LeadingSide, PGN text field */}
           <div className="flex flex-col gap-3 order-2 md:order-1">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="opening-name" className="text-sm font-semibold text-foreground/80 ml-1">
+              <label htmlFor="opening-name" className="text-[11px] sm:text-sm font-semibold text-foreground/80 ml-1">
                 Название <span className="text-[10px] font-normal text-muted-foreground ml-1">({name.length}/100)</span>
               </label>
               <div className="relative flex items-center group">
@@ -597,7 +597,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
                   onBlur={() => setFocusedField(null)}
                   placeholder="Итальянская партия"
                   disabled={isSaving || loading}
-                  className="h-11 w-full rounded-xl border border-input bg-background pl-4 pr-12 text-sm outline-none transition
+                  className="h-11 w-full rounded-xl border border-input bg-background pl-4 pr-12 text-[11px] sm:text-sm outline-none transition
                     shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={s ? { ...(focusedField === "name" ? s.inputFocus : s.input), boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}` } : {}}
                 />
@@ -617,7 +617,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="opening-description" className="text-sm font-semibold text-foreground/80 ml-1">
+              <label htmlFor="opening-description" className="text-[11px] sm:text-sm font-semibold text-foreground/80 ml-1">
                 Описание <span className="text-[10px] font-normal text-muted-foreground ml-1">({description.length}/1000)</span>
               </label>
               <textarea
@@ -630,7 +630,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
                 placeholder="Короткая заметка о дебюте..."
                 disabled={isSaving || loading}
                 rows={2}
-                className="rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition
+                className="rounded-xl border border-input bg-background px-4 py-3 text-[11px] sm:text-sm outline-none transition
                   resize-none shadow-sm overflow-y-auto max-h-[80px] md:max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={s ? { ...(focusedField === "description" ? s.inputFocus : s.input), boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}` } : {}}
               />
@@ -648,13 +648,13 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
             {/* PGN text field lives in left column */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="opening-pgn" className="text-sm font-semibold text-foreground/80 ml-1">
+              <label htmlFor="opening-pgn" className="text-[11px] sm:text-sm font-semibold text-foreground/80 ml-1">
                 PGN <span className="text-[10px] font-normal text-muted-foreground ml-1">({parsePgn(pgn).fullMoveCount}/200)</span>
               </label>
               <div className="relative w-full group">
           <div
             ref={pgnHighlightRef}
-            className="rounded-xl border border-transparent bg-background px-4 py-3 font-mono text-sm whitespace-pre-wrap break-words pointer-events-none select-none min-h-[44px] max-h-[160px] overflow-y-auto"
+            className="rounded-xl border border-transparent bg-background px-4 py-3 font-mono text-[11px] sm:text-sm whitespace-pre-wrap break-words pointer-events-none select-none min-h-[44px] max-h-[160px] overflow-y-auto"
             aria-hidden="true"
           >
             {renderPgnWithHighlights()}
@@ -700,7 +700,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
             onScroll={syncScroll}
             placeholder={parentPgn ? undefined : "1. e4 e5 2. Nf3 ..."}
             rows={1}
-            className="absolute inset-0 w-full h-full z-10 rounded-xl border border-input bg-transparent px-4 py-3 font-mono text-sm text-transparent caret-accent outline-none transition
+            className="absolute inset-0 w-full h-full z-10 rounded-xl border border-input bg-transparent px-4 py-3 font-mono text-[11px] sm:text-sm text-transparent caret-accent outline-none transition
               resize-none overflow-y-auto"
             spellCheck={false}
             style={s ? { ...(focusedField === "pgn" ? s.inputFocus : s.input), boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 30%, transparent), 0 0 24px 4px ${s.glow}` } : {}}
@@ -728,7 +728,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
                 {promotionData && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-[2px]">
                     <div className="flex flex-col items-center gap-4 rounded-2xl bg-card p-6 shadow-2xl border border-border">
-                      <span className="text-sm font-bold text-foreground">Выберите фигуру</span>
+                      <span className="text-[11px] sm:text-sm font-bold text-foreground">Выберите фигуру</span>
                       <div className="flex gap-3">
                         {[
                           { id: "q", label: "Ферзь", icon: "♕" },
@@ -740,7 +740,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
                             key={p.id}
                             type="button"
                             onClick={() => handlePromotionSelect(p.id)}
-                            className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background text-2xl transition hover:border-accent hover:bg-accent/10 hover:text-accent active:scale-95"
+                            className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background text-[10px] sm:text-xs sm:text-base sm:text-2xl transition hover:border-accent hover:bg-accent/10 hover:text-accent active:scale-95"
                             title={p.label}
                           >
                             {p.icon}
@@ -757,7 +757,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] sm:text-xs font-medium"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     Удалить ход
@@ -785,7 +785,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
         </div>{/* end grid */}
 
         {error && (
-          <div className="rounded-md bg-error/15 p-3 text-sm text-error font-medium border border-error/20 animate-in fade-in slide-in-from-top-1">
+          <div className="rounded-md bg-error/15 p-3 text-[11px] sm:text-sm text-error font-medium border border-error/20 animate-in fade-in slide-in-from-top-1">
             {error}
           </div>
         )}
@@ -796,7 +796,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
               type="button"
               onClick={onCancel}
               disabled={isSaving || loading}
-              className="h-10 rounded-lg border border-border px-6 text-sm font-medium transition hover:bg-accent/5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-10 rounded-lg border border-border px-6 text-[11px] sm:text-sm font-medium transition hover:bg-accent/5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Отмена
             </button>
@@ -805,7 +805,7 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
             type="button"
             onClick={handleSubmit}
             disabled={loading || isSaving}
-            className={`flex h-10 items-center justify-center gap-2 rounded-lg px-6 text-sm font-bold shadow-lg transition
+            className={`flex h-10 items-center justify-center gap-2 rounded-lg px-6 text-[11px] sm:text-sm font-bold shadow-lg transition
               hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${isInline ? "w-full" : ""}`}
             style={s ? { 
               backgroundColor: s.accent,

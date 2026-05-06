@@ -254,7 +254,7 @@ export function HomeScreen({
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
       <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-card/50 backdrop-blur-md z-50">
-        <h1 className="text-base font-black tracking-[0.2em] text-primary sm:text-xl md:text-2xl">
+        <h1 className="text-[10px] sm:text-xs sm:text-base font-black tracking-[0.2em] text-primary sm:text-xl md:text-2xl">
           RANDOM CHESS DEBUT
         </h1>
       </header>
@@ -271,13 +271,13 @@ export function HomeScreen({
               {recentLogs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                   <Clock className="mb-2 h-8 w-8 opacity-20" />
-                  <p className="text-sm">Нет недавних изменений</p>
+                  <p className="text-[11px] sm:text-sm">Нет недавних изменений</p>
                 </div>
               ) : (
                 recentLogs.map((log) => (
                   <div key={log.id} className="group relative rounded-xl border border-border bg-card/50 p-3 transition hover:border-primary/50">
                     <div className="mb-1 flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <span className="text-[10px] font-bold uppercase tracking-normal sm:tracking-wider text-muted-foreground">
                         Удалено {new Date(log.deleted_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <button
@@ -288,7 +288,7 @@ export function HomeScreen({
                         <RotateCcw className="h-3 w-3" />
                       </button>
                     </div>
-                    <h3 className="line-clamp-1 text-sm font-bold">{log.opening_name || "Без названия"}</h3>
+                    <h3 className="line-clamp-1 text-[11px] sm:text-sm font-bold">{log.opening_name || "Без названия"}</h3>
                     <p className="line-clamp-2 text-[10px] text-muted-foreground">{log.opening_description}</p>
                   </div>
                 ))
@@ -298,7 +298,7 @@ export function HomeScreen({
           <div className="border-t border-border p-4">
             <Button 
               variant="outline" 
-              className="w-full gap-2 rounded-xl text-xs font-bold uppercase tracking-wider"
+              className="w-full gap-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-normal sm:tracking-wider"
               onClick={() => setHistoryOpen(true)}
               style={accentGlow}
             >
@@ -315,7 +315,7 @@ export function HomeScreen({
             <Button 
               onClick={onStart} 
               disabled={openings.length === 0}
-              className="h-10 sm:h-12 rounded-full px-5 sm:px-8 text-xs sm:text-sm font-bold uppercase tracking-widest"
+              className="h-10 sm:h-12 rounded-full px-5 sm:px-8 text-[10px] sm:text-xs sm:text-sm font-bold uppercase tracking-wide sm:tracking-widest"
               style={accentGlow}
             >
               <Play className="mr-2 h-4 w-4 fill-current" />
@@ -324,7 +324,7 @@ export function HomeScreen({
             <Button 
               variant="secondary"
               onClick={() => setAddDialogOpen(true)}
-              className="h-10 sm:h-12 rounded-full px-5 sm:px-8 text-xs sm:text-sm font-bold uppercase tracking-widest"
+              className="h-10 sm:h-12 rounded-full px-5 sm:px-8 text-[10px] sm:text-xs sm:text-sm font-bold uppercase tracking-wide sm:tracking-widest"
               style={accentGlow}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -334,7 +334,7 @@ export function HomeScreen({
               <Button 
                 variant="ghost"
                 onClick={() => setActiveCollectionId(null)}
-                className="h-12 rounded-full px-6 text-sm font-bold uppercase tracking-widest"
+                className="h-12 rounded-full px-6 text-[11px] sm:text-sm font-bold uppercase tracking-wide sm:tracking-widest"
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Назад
@@ -370,7 +370,7 @@ export function HomeScreen({
                     <div className="mb-4 rounded-full bg-accent/20 p-8">
                       <LayoutGrid className="h-12 w-12 text-muted-foreground opacity-20" />
                     </div>
-                    <h3 className="text-xl font-bold">Нет дебютов</h3>
+                    <h3 className="text-[11px] sm:text-sm sm:text-xl font-bold">Нет дебютов</h3>
                     <p className="text-muted-foreground">Добавьте свой первый дебют, чтобы начать</p>
                   </div>
                 )}
@@ -387,7 +387,7 @@ export function HomeScreen({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={activeCollectionId ? "Поиск в коллекции..." : "Поиск по всей библиотеке..."}
-                className="h-11 sm:h-14 w-full rounded-full border border-border bg-card pl-11 sm:pl-12 pr-4 sm:pr-6 text-sm sm:text-base outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
+                className="h-11 sm:h-14 w-full rounded-full border border-border bg-card pl-11 sm:pl-12 pr-4 sm:pr-6 text-[11px] sm:text-sm sm:text-base outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
                 style={accentGlow}
               />
             </div>
@@ -406,13 +406,13 @@ export function HomeScreen({
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-bold tracking-tight">{userEmail}</h2>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Шахматист</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">Шахматист</p>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-border bg-card/50 p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Рекорд</span>
-                    <span className="text-lg font-black tabular-nums text-primary">{record !== null ? Math.round(record) : 0}</span>
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-normal sm:tracking-wider text-muted-foreground">Рекорд</span>
+                    <span className="text-[10px] sm:text-xs sm:text-lg font-black tabular-nums text-primary">{record !== null ? Math.round(record) : 0}</span>
                   </div>
                 </div>
               </section>
@@ -423,13 +423,13 @@ export function HomeScreen({
               <section className="space-y-6">
                 <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold uppercase tracking-widest">Настройки</h3>
+                  <h3 className="text-[11px] sm:text-sm font-bold uppercase tracking-wide sm:tracking-widest">Настройки</h3>
                 </div>
 
                 <div className="space-y-4">
                   {/* Тема */}
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Тема оформления</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">Тема оформления</Label>
                     <Button 
                       variant="outline" 
                       className="h-12 w-full justify-between rounded-xl px-4"
@@ -446,12 +446,12 @@ export function HomeScreen({
 
                   {/* Язык */}
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Язык интерфейса</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">Язык интерфейса</Label>
                     <div className="flex rounded-xl bg-accent/20 p-1">
                       <button 
                         onClick={() => onLanguageChange("ru")}
                         className={cn(
-                          "flex-1 rounded-lg py-2 text-xs font-bold uppercase transition",
+                          "flex-1 rounded-lg py-2 text-[10px] sm:text-xs font-bold uppercase transition",
                           language === "ru" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                         )}
                       >
@@ -460,7 +460,7 @@ export function HomeScreen({
                       <button 
                         onClick={() => onLanguageChange("en")}
                         className={cn(
-                          "flex-1 rounded-lg py-2 text-xs font-bold uppercase transition",
+                          "flex-1 rounded-lg py-2 text-[10px] sm:text-xs font-bold uppercase transition",
                           language === "en" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                         )}
                       >
@@ -471,7 +471,7 @@ export function HomeScreen({
 
                   {/* Формат PGN */}
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Формат записи PGN</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground">Формат записи PGN</Label>
                     <Select value={pgnFormat} onValueChange={(v: any) => onPgnFormatChange(v)}>
                       <SelectTrigger className="h-12 rounded-xl bg-accent/20 border-none font-semibold">
                         <SelectValue />
@@ -511,7 +511,7 @@ export function HomeScreen({
               <section className="pt-4">
                 <Button 
                   variant="link" 
-                  className="h-auto w-full p-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-error"
+                  className="h-auto w-full p-0 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-muted-foreground hover:text-error"
                   onClick={onClearAllData}
                 >
                   Удалить все данные
@@ -529,28 +529,28 @@ export function HomeScreen({
           className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
         >
           <History className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wider">История</span>
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">История</span>
         </button>
         <button
           onClick={() => setThemeDialogOpen(true)}
           className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
         >
           <Paintbrush className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wider">Тема</span>
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Тема</span>
         </button>
         <button
           onClick={() => setFeedbackOpen(true)}
           className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
         >
           <MessageSquare className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wider">Фидбек</span>
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Фидбек</span>
         </button>
         <button
           onClick={onLogout}
           className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-error"
         >
           <LogOut className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wider">Выйти</span>
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Выйти</span>
         </button>
       </div>
 
@@ -565,7 +565,7 @@ export function HomeScreen({
       <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
         <DialogContent className="rounded-3xl border-border bg-card sm:max-w-md" style={accentGlow}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-2xl font-black">
+            <DialogTitle className="flex items-center gap-2 text-[10px] sm:text-xs sm:text-base sm:text-2xl font-black">
               <MessageSquare className="h-6 w-6 text-primary" />
               Обратная связь
             </DialogTitle>
@@ -578,9 +578,9 @@ export function HomeScreen({
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               placeholder="Ваше сообщение..."
-              className="min-h-[150px] w-full rounded-2xl border-none bg-accent/20 p-4 text-sm outline-none ring-primary/20 transition focus:ring-4"
+              className="min-h-[150px] w-full rounded-2xl border-none bg-accent/20 p-4 text-[11px] sm:text-sm outline-none ring-primary/20 transition focus:ring-4"
             />
-            {feedbackError && <p className="text-xs font-bold text-error">{feedbackError}</p>}
+            {feedbackError && <p className="text-[10px] sm:text-xs font-bold text-error">{feedbackError}</p>}
           </div>
           <DialogFooter>
             <Button
@@ -596,7 +596,7 @@ export function HomeScreen({
                   toast.success("Спасибо за отзыв!")
                 }
               }}
-              className="w-full rounded-xl py-6 font-bold uppercase tracking-widest"
+              className="w-full rounded-xl py-6 font-bold uppercase tracking-wide sm:tracking-widest"
               style={accentGlow}
             >
               {feedbackSaving ? "Отправка..." : "Отправить"}
@@ -609,8 +609,8 @@ export function HomeScreen({
         <DialogContent className="rounded-3xl border-border bg-card p-0 overflow-hidden dialog-wide flex flex-col" style={accentGlow}>
           {/* Header — fixed, не скроллится */}
           <div className="px-8 py-6 border-b border-border text-center shrink-0">
-            <DialogTitle className="text-2xl font-black uppercase tracking-wider text-center">Добавить дебют</DialogTitle>
-            <DialogDescription className="text-center text-sm text-muted-foreground mt-1">
+            <DialogTitle className="text-[10px] sm:text-xs sm:text-base sm:text-2xl font-black uppercase tracking-normal sm:tracking-wider text-center">Добавить дебют</DialogTitle>
+            <DialogDescription className="text-center text-[11px] sm:text-sm text-muted-foreground mt-1">
               Введите параметры нового дебюта для вашей коллекции.
             </DialogDescription>
           </div>
@@ -645,7 +645,7 @@ export function HomeScreen({
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <DialogContent className="rounded-3xl border-border bg-card" style={accentGlow}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+            <DialogTitle className="flex items-center gap-2 text-[11px] sm:text-sm sm:text-xl font-bold">
               <AlertTriangle className="h-5 w-5 text-error" />
               Удалить дебют?
             </DialogTitle>
