@@ -31,6 +31,12 @@ const MITTEL_CARD_W = 144  // w-36
 const ORBIT_RADIUS = 240   // px от центра до центра карточки-миттельшпиля
 const CAROUSEL_SIZE = ORBIT_RADIUS * 2 + MITTEL_CARD_W + 16 // +16 запас
 
+// Мобильная карусель — вписывается в ~360px экран
+const MOB_CENTER_W = 100
+const MOB_MITTEL_W = 72
+const MOB_ORBIT = 128
+const MOB_CAROUSEL_SIZE = MOB_ORBIT * 2 + MOB_MITTEL_W + 8
+
 export function OpeningDetailScreen({
   opening,
   mittelspiels,
@@ -147,6 +153,15 @@ export function OpeningDetailScreen({
     }
   }
 
+  const getMobPos = (index: number, total: number) => {
+    if (total === 0) return { x: 0, y: 0 }
+    const angle = (index / total) * 2 * Math.PI - Math.PI / 2
+    return {
+      x: Math.cos(angle) * MOB_ORBIT,
+      y: Math.sin(angle) * MOB_ORBIT,
+    }
+  }
+
   const activeParsed = useMemo(() => parsePgn(activeOpening.pgn), [activeOpening.pgn])
   const boardOrientation = useMemo((): "white" | "black" => {
     if (activeOpening.leadingSide === "white") return "white"
@@ -173,8 +188,8 @@ export function OpeningDetailScreen({
         {/* ЦЕНТРАЛЬНАЯ ОБЛАСТЬ */}
         <main className="relative flex flex-1 flex-col sm:items-center sm:justify-center overflow-hidden bg-accent/5">
 
-          {/* Кнопка "Добавить" — z-30, всегда поверх карусели */}
-          <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          {/* Кнопка "Добавить" — только на десктопе, z-30 поверх карусели */}
+          <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto hidden sm:block">
             <Button
               onClick={() => setAddDialogOpen(true)}
               className="h-8 sm:h-10 rounded-full px-3 sm:px-6 text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-widest"
@@ -328,86 +343,127 @@ export function OpeningDetailScreen({
             </div>
           </div>
 
-          {/* Мобильный вид — только на мобильном */}
-          <div className="flex flex-1 flex-col overflow-hidden sm:hidden">
+          {/* Мобильная круговая карусель — только на мобильном */}
+          <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden">
 
-            {/* Центральный дебют + миттельшпили в одном горизонтальном ряду */}
-            <div className="flex-1 flex flex-col justify-center overflow-hidden py-2">
+            {/* Поиск */}
+            <div className="shrink-0 w-full px-4 pt-1 pb-2">
+              <div className="relative w-full">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Поиск миттельшпилей..."
+                  className="h-8 w-full rounded-full border border-border bg-card pl-9 pr-4 text-[11px] outline-none transition focus:border-primary"
+                />
+              </div>
+            </div>
 
-              {/* Строка: центральная карточка слева, линия, миттельшпили скроллятся вправо */}
-              <div className="flex items-center gap-0 overflow-hidden">
-
-                {/* Центральная карточка — фиксированная ширина, shrink-0 */}
-                <div className="shrink-0 pl-3 pr-2">
-                  <div style={{ ...accentGlow, borderRadius: 12, fontSize: "0.72rem", width: 130 }}>
-                    <OpeningCard
-                      opening={opening}
-                      onDelete={async () => setDeleteId(opening.id)}
-                      onEdit={onEdit}
-                      onStudy={() => setSelectedMittelspiel(null)}
-                      theme={currentTheme}
-                      isSaving={isSaving}
-                      isSelected={isMainOpening}
-                      compact
-                      hideActions
-                    />
-                  </div>
-                </div>
-
-                {/* Пунктирная линия-коннектор */}
-                <div className="shrink-0 flex items-center" style={{ width: 24 }}>
-                  <svg width="24" height="2" viewBox="0 0 24 2">
-                    <line x1="0" y1="1" x2="24" y2="1" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeDasharray="4 3" />
-                  </svg>
-                </div>
-
-                {/* Горизонтальный скролл миттельшпилей */}
-                <div className="flex-1 overflow-x-auto overflow-y-hidden">
-                  <div className="flex gap-2 pr-3" style={{ width: "max-content" }}>
-                    {filteredMittelspiels.map((m) => {
-                      const isSelected = selectedMittelspiel?.id === m.id
+            {/* Карусель — центрирована, вписана в экран */}
+            <div className="flex flex-1 items-center justify-center overflow-hidden w-full">
+              <div
+                style={{ width: MOB_CAROUSEL_SIZE, height: MOB_CAROUSEL_SIZE, position: "relative", flexShrink: 0 }}
+              >
+                {/* Вращающийся контейнер */}
+                <div
+                  ref={carouselRef}
+                  className="absolute inset-0"
+                  style={{ animation: "carousel-spin 20s linear infinite" }}
+                >
+                  {/* SVG линии */}
+                  <svg className="absolute inset-0 pointer-events-none" width={MOB_CAROUSEL_SIZE} height={MOB_CAROUSEL_SIZE}>
+                    {mittelspiels.map((m, i) => {
+                      const pos = getMobPos(i, mittelspiels.length)
+                      const cx = MOB_CAROUSEL_SIZE / 2
+                      const cy = MOB_CAROUSEL_SIZE / 2
+                      const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) || 1
+                      const ux = pos.x / dist
+                      const uy = pos.y / dist
+                      const visible = filteredIds.has(m.id)
                       return (
-                        <div
+                        <line
                           key={m.id}
+                          x1={cx + ux * (MOB_CENTER_W / 2)}
+                          y1={cy + uy * (MOB_CENTER_W / 2)}
+                          x2={cx + pos.x - ux * (MOB_MITTEL_W / 2)}
+                          y2={cy + pos.y - uy * (MOB_MITTEL_W / 2)}
+                          stroke="rgba(255,255,255,0.4)"
+                          strokeWidth="1"
+                          strokeDasharray="4 3"
+                          style={{ opacity: visible ? 1 : 0, transition: "opacity 0.3s" }}
+                        />
+                      )
+                    })}
+                  </svg>
+
+                  {/* Карточки миттельшпилей */}
+                  {mittelspiels.map((m, i) => {
+                    const pos = getMobPos(i, mittelspiels.length)
+                    const isSelected = selectedMittelspiel?.id === m.id
+                    const visible = filteredIds.has(m.id)
+                    return (
+                      <div
+                        key={m.id}
+                        className="absolute"
+                        style={{
+                          left: "50%", top: "50%",
+                          transform: `translate(calc(${pos.x}px - 50%), calc(${pos.y}px - 50%))`,
+                          width: MOB_MITTEL_W, zIndex: 10,
+                          opacity: visible ? 1 : 0,
+                          pointerEvents: visible ? "auto" : "none",
+                          transition: "opacity 0.3s",
+                        }}
+                      >
+                        <div
+                          ref={(el) => { if (el) cardRefsMap.current.set(m.id, el); else cardRefsMap.current.delete(m.id) }}
                           style={{
+                            animation: `carousel-spin-reverse 20s linear ${getCardDelay(m.id)}ms infinite`,
+                            willChange: "transform",
+                            fontSize: "0.58rem", lineHeight: 1.1,
                             ...(isSelected ? accentGlow : {}),
-                            borderRadius: 10,
-                            fontSize: "0.68rem",
-                            width: 110,
-                            flexShrink: 0,
                           }}
-                          className="mittel-card-wrapper"
+                          className="mittel-card-wrapper hover:scale-105 transition-transform"
                         >
                           <OpeningCard
                             opening={m}
                             onDelete={async () => setDeleteId(m.id)}
                             onEdit={onEdit}
-                            onStudy={() => setSelectedMittelspiel(m)}
+                            onStudy={() => handleMittelspielClick(m)}
                             theme={currentTheme}
                             isSaving={isSaving}
                             isSelected={isSelected}
-                            compact
-                            hideActions
+                            compact hideActions
                           />
                         </div>
-                      )
-                    })}
-                    {filteredMittelspiels.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center text-muted-foreground">
-                        <p className="text-[10px]">Нет миттельшпилей</p>
                       </div>
-                    )}
-                  </div>
+                    )
+                  })}
                 </div>
 
+                {/* Центральная карточка */}
+                <div
+                  className="absolute z-20"
+                  style={{
+                    left: "50%", top: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: MOB_CENTER_W,
+                    ...accentGlow,
+                    fontSize: "0.65rem", lineHeight: 1.2,
+                  }}
+                >
+                  <OpeningCard
+                    opening={opening}
+                    onDelete={async () => setDeleteId(opening.id)}
+                    onEdit={onEdit}
+                    onStudy={() => setSelectedMittelspiel(null)}
+                    theme={currentTheme}
+                    isSaving={isSaving}
+                    isSelected={isMainOpening}
+                    compact hideActions
+                  />
+                </div>
               </div>
-
-              {/* Подсказка скролла */}
-              {filteredMittelspiels.length > 2 && (
-                <p className="text-center text-[9px] text-muted-foreground/50 mt-2 tracking-wide">
-                  ← листайте миттельшпили →
-                </p>
-              )}
             </div>
 
           </div>
@@ -523,42 +579,42 @@ export function OpeningDetailScreen({
       </div>
 
       {/* Мобильная нижняя панель действий — вне overflow-hidden, прижата к низу */}
-      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-2 py-2 backdrop-blur-md sm:hidden">
+      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-1 py-1.5 backdrop-blur-md sm:hidden">
         <button
           onClick={onBack}
-          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-primary min-w-0"
         >
-          <ArrowLeft className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Назад</span>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Назад</span>
         </button>
         <button
-          onClick={() => setPreviewOpen(true)}
-          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+          onClick={() => setAddDialogOpen(true)}
+          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-primary min-w-0"
         >
-          <Eye className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Посмотреть</span>
+          <Plus className="h-4 w-4" />
+          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Добавить</span>
         </button>
         <button
           onClick={() => onStudy(activeOpening)}
-          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition"
+          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 transition min-w-0"
           style={{ color: s.accent }}
         >
-          <BookOpen className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Изучать</span>
+          <BookOpen className="h-4 w-4" />
+          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Изучать</span>
         </button>
         <button
           onClick={() => onEdit(activeOpening)}
-          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-primary"
+          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-primary min-w-0"
         >
-          <Pencil className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Редактировать</span>
+          <Pencil className="h-4 w-4" />
+          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Редакт.</span>
         </button>
         <button
           onClick={() => setDeleteId(activeOpening.id)}
-          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-muted-foreground transition hover:text-error"
+          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-error min-w-0"
         >
-          <Trash2 className="h-5 w-5" />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Удалить</span>
+          <Trash2 className="h-4 w-4" />
+          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Удалить</span>
         </button>
       </div>
 
