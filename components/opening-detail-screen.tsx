@@ -32,9 +32,14 @@ const ORBIT_RADIUS = 240   // px от центра до центра карто�
 const CAROUSEL_SIZE = ORBIT_RADIUS * 2 + MITTEL_CARD_W + 16 // +16 запас
 
 // Мобильная карусель — вписывается в ~360px экран
-const MOB_CENTER_W = 76
-const MOB_MITTEL_W = 54
-const MOB_ORBIT = 100
+const MOB_CARD_RENDER_W = 140
+const MOB_CENTER_RENDER_W = 180
+const MOB_MITTEL_SCALE = 0.52
+const MOB_CENTER_SCALE = 0.58
+const MOB_MITTEL_W = Math.round(MOB_CARD_RENDER_W * MOB_MITTEL_SCALE)
+const MOB_CENTER_W = Math.round(MOB_CENTER_RENDER_W * MOB_CENTER_SCALE)
+
+const MOB_ORBIT = 135
 const MOB_CAROUSEL_SIZE = MOB_ORBIT * 2 + MOB_MITTEL_W + 8
 
 export function OpeningDetailScreen({
@@ -56,7 +61,6 @@ export function OpeningDetailScreen({
   const [previewOpen, setPreviewOpen] = useState(false)
   // Web Animations API refs для плавного управления скоростью карусели
   const carouselRef = useRef<HTMLDivElement | null>(null)
-  const mobCarouselRef = useRef<HTMLDivElement | null>(null)
   const cardRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
   const rateRafRef = useRef<number | null>(null)
   const rateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -117,7 +121,6 @@ export function OpeningDetailScreen({
 
     const anims: Animation[] = []
     if (carouselRef.current) anims.push(...carouselRef.current.getAnimations())
-    if (mobCarouselRef.current) anims.push(...mobCarouselRef.current.getAnimations())
     cardRefsMap.current.forEach((el) => anims.push(...el.getAnimations()))
     if (anims.length === 0) return
 
@@ -347,6 +350,7 @@ export function OpeningDetailScreen({
 
           {/* Мобильная круговая карусель — только на мобильном */}
           <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden">
+            <div style={{background:"red",color:"white",padding:"8px",fontWeight:"bold",width:"100%",textAlign:"center"}}>НОВЫЙ КОД РАБОТАЕТ</div>
 
             {/* Поиск */}
             <div className="shrink-0 w-full px-4 pt-1 pb-2">
@@ -369,7 +373,7 @@ export function OpeningDetailScreen({
               >
                 {/* Вращающийся контейнер */}
                 <div
-                  ref={mobCarouselRef}
+                  ref={carouselRef}
                   className="absolute inset-0"
                   style={{ animation: "carousel-spin 20s linear infinite" }}
                 >
@@ -411,10 +415,12 @@ export function OpeningDetailScreen({
                         style={{
                           left: "50%", top: "50%",
                           transform: `translate(calc(${pos.x}px - 50%), calc(${pos.y}px - 50%))`,
-                          width: MOB_MITTEL_W, zIndex: 10,
+                          width: MOB_CARD_RENDER_W,
+                          zIndex: 10,
                           opacity: visible ? 1 : 0,
                           pointerEvents: visible ? "auto" : "none",
                           transition: "opacity 0.3s",
+                          overflow: "visible",
                         }}
                       >
                         <div
@@ -422,10 +428,12 @@ export function OpeningDetailScreen({
                           style={{
                             animation: `carousel-spin-reverse 20s linear ${getCardDelay(m.id)}ms infinite`,
                             willChange: "transform",
-                            fontSize: "0.58rem", lineHeight: 1.1,
+                            transform: `scale(${MOB_MITTEL_SCALE})`,
+                            transformOrigin: "top left",
+                            width: MOB_CARD_RENDER_W,
                             ...(isSelected ? accentGlow : {}),
                           }}
-                          className="mittel-card-wrapper hover:scale-105 transition-transform"
+                          className="mittel-card-wrapper"
                         >
                           <OpeningCard
                             opening={m}
@@ -449,11 +457,16 @@ export function OpeningDetailScreen({
                   style={{
                     left: "50%", top: "50%",
                     transform: "translate(-50%, -50%)",
-                    width: MOB_CENTER_W,
-                    ...accentGlow,
-                    fontSize: "0.65rem", lineHeight: 1.2,
+                    width: MOB_CENTER_RENDER_W,
+                    overflow: "visible",
                   }}
                 >
+                  <div style={{
+                    transform: `scale(${MOB_CENTER_SCALE})`,
+                    transformOrigin: "top center",
+                    width: MOB_CENTER_RENDER_W,
+                    ...accentGlow,
+                  }}>
                   <OpeningCard
                     opening={opening}
                     onDelete={async () => setDeleteId(opening.id)}
@@ -464,6 +477,7 @@ export function OpeningDetailScreen({
                     isSelected={isMainOpening}
                     compact hideActions
                   />
+                  </div>
                 </div>
               </div>
             </div>
