@@ -171,7 +171,7 @@ export function OpeningDetailScreen({
 
       <div className="flex flex-1 overflow-hidden">
         {/* ЦЕНТРАЛЬНАЯ ОБЛАСТЬ */}
-        <main className="relative flex flex-1 flex-col overflow-hidden bg-accent/5">
+        <main className="relative flex flex-1 flex-col sm:items-center sm:justify-center overflow-hidden bg-accent/5">
 
           {/* Кнопка "Добавить" — z-30, всегда поверх карусели */}
           <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
