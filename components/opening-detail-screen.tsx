@@ -375,7 +375,6 @@ export function OpeningDetailScreen({
                   height: MOB_CAROUSEL_SIZE,
                   position: "relative",
                   flexShrink: 0,
-                  touchAction: "none",
                   userSelect: "none",
                 }}
               >
