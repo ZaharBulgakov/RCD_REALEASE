@@ -185,7 +185,7 @@ export function OpeningDetailScreen({
           <ArrowLeft className="h-5 w-5" />
           Назад
         </Button>
-        <h1 className="text-[11px] sm:text-sm font-black tracking-[0.15em] text-primary sm:text-xl truncate max-w-[160px] sm:max-w-none">
+        <h1 className="text-[20px] sm:text-xl md:text-2xl font-black tracking-[0.2em] text-primary text-center px-16">
           {opening.name.toUpperCase()}
         </h1>
         
@@ -351,7 +351,7 @@ export function OpeningDetailScreen({
           </div>
 
           {/* Мобильная круговая карусель — только на мобильном */}
-          <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden" style={{ touchAction: "none" }}>
+          <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden">
             {/* Поиск */}
             <div className="shrink-0 w-full px-4 pt-1 pb-2" style={{ touchAction: "auto" }}>
               <div className="relative w-full">
@@ -612,7 +612,7 @@ export function OpeningDetailScreen({
       </div>
 
       {/* Мобильная нижняя панель действий — вне overflow-hidden, прижата к низу */}
-      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-1 py-1.5 backdrop-blur-md sm:hidden">
+      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-1 py-1.5 backdrop-blur-md sm:hidden" style={{ touchAction: "auto" }}>
         <button
           onClick={onBack}
           className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-primary min-w-0"
