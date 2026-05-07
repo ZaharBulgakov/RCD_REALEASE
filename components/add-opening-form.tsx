@@ -461,13 +461,24 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
   }
 
   const handleDelete = () => {
-    const game = chessRef.current
+    if (!pgn.trim()) return
+    // Строим полный PGN, делаем undo через chess.js, берём только пользовательскую часть
+    const fullPgn = parentPgn ? `${parentPgn} ${pgn.trim()}`.trim() : pgn.trim()
+    const game = new Chess()
+    try {
+      game.loadPgn(fullPgn)
+    } catch {
+      const tokens = fullPgn.split(/\s+/)
+      for (const token of tokens) {
+        if (!token || token.endsWith(".") || /^\d+$/.test(token)) continue
+        try { game.move(token) } catch { break }
+      }
+    }
     const undone = game.undo()
     if (undone) {
       const newFullPgn = getCleanPgn(game)
       const newUserPgn = stripPrefix(newFullPgn)
-      setPgn(newUserPgn)
-      setFen(game.fen())
+      setPgn(newUserPgn) // useEffect подхватит и обновит chessRef и fen
     }
     setTimeout(syncScroll, 0)
   }
