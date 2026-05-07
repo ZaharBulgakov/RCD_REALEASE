@@ -611,42 +611,42 @@ export function OpeningDetailScreen({
       </div>
 
       {/* Мобильная нижняя панель действий — вне overflow-hidden, прижата к низу */}
-      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-1 py-1.5 backdrop-blur-md sm:hidden" style={{ touchAction: "auto" }}>
+      <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-4 py-2 backdrop-blur-md sm:hidden" style={{ touchAction: "auto" }}>
         <button
           onClick={onBack}
-          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-primary min-w-0"
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
         >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Назад</span>
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Назад</span>
         </button>
         <button
           onClick={() => setAddDialogOpen(true)}
-          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-primary min-w-0"
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
         >
-          <Plus className="h-4 w-4" />
-          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Добавить</span>
+          <Plus className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Добавить</span>
         </button>
         <button
           onClick={() => onStudy(activeOpening)}
-          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 transition min-w-0"
+          className="flex flex-col items-center gap-1 rounded-xl p-2 transition"
           style={{ color: s.accent }}
         >
-          <BookOpen className="h-4 w-4" />
-          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Изучать</span>
+          <BookOpen className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Изучать</span>
         </button>
         <button
           onClick={() => onEdit(activeOpening)}
-          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-primary min-w-0"
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
         >
-          <Pencil className="h-4 w-4" />
-          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Редакт.</span>
+          <Pencil className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Редакт.</span>
         </button>
         <button
           onClick={() => setDeleteId(activeOpening.id)}
-          className="flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-muted-foreground transition hover:text-error min-w-0"
+          className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-error"
         >
-          <Trash2 className="h-4 w-4" />
-          <span className="text-[8px] font-bold uppercase tracking-wide leading-none">Удалить</span>
+          <Trash2 className="h-5 w-5" />
+          <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider">Удалить</span>
         </button>
       </div>
 
