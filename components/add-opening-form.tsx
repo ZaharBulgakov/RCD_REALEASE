@@ -81,7 +81,9 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
   // Helper to build full PGN (prefix + user moves)
   const getFullPgn = useCallback((userPgn: string) => {
-    if (parentPgn) return `${parentPgn} ${userPgn.trim()}`.trim()
+    if (parentPgn && !userPgn.trim().startsWith(parentPgn)) {
+      return `${parentPgn} ${userPgn.trim()}`.trim()
+    }
     return userPgn.trim()
   }, [parentPgn])
 
@@ -466,16 +468,14 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
       const fullPgn = getFullPgn(pgn)
       if (fullPgn) {
         game.loadPgn(fullPgn)
-        const undone = game.undo()
-        if (undone) {
-          const newFullPgn = getCleanPgn(game)
-          const newUserPgn = stripPrefix(newFullPgn)
-          setPgn(newUserPgn)
-          setFen(game.fen())
-          chessRef.current = game
-        }
-        // Если undo вернул нас к позиции parentPgn — pgn становится ""
-        if (!pgn) return
+      }
+      const undone = game.undo()
+      if (undone) {
+        const newFullPgn = getCleanPgn(game)
+        const newUserPgn = stripPrefix(newFullPgn)
+        setPgn(newUserPgn)
+        setFen(game.fen())
+        chessRef.current = game
       }
     } catch {
       setPgn(prev => prev.slice(0, -1).trimEnd())
