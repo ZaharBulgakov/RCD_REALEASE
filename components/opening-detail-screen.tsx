@@ -56,6 +56,7 @@ export function OpeningDetailScreen({
   const [selectedMittelspiel, setSelectedMittelspiel] = useState<Opening | null>(null)
   const [query, setQuery] = useState("")
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [usePrefix, setUsePrefix] = useState(true)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -656,10 +657,19 @@ export function OpeningDetailScreen({
           {/* Header — fixed */}
           <div className="px-8 py-6 border-b border-border text-center shrink-0">
             <DialogTitle className="text-[10px] sm:text-xs sm:text-base sm:text-2xl font-black uppercase tracking-normal sm:tracking-wider text-center">Добавить миттельшпиль</DialogTitle>
-            <DialogDescription className="text-center text-[11px] sm:text-sm text-muted-foreground mt-1">
-              Для этого миттельшпиля автоматически будет добавлен префикс:{" "}
-              <span className="font-mono text-primary">{opening.pgn}</span>
-            </DialogDescription>
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <span className="text-[11px] sm:text-sm text-muted-foreground">Начать с позиции дебюта</span>
+              <button
+                type="button"
+                onClick={() => setUsePrefix(v => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${usePrefix ? "bg-primary" : "bg-muted"}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${usePrefix ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+            </div>
+            {usePrefix && (
+              <p className="mt-2 text-[10px] sm:text-xs font-mono text-primary/80">{opening.pgn}</p>
+            )}
           </div>
           {/* Body — scrollable */}
           <div className="p-6">
@@ -669,7 +679,7 @@ export function OpeningDetailScreen({
                 if (!err) setAddDialogOpen(false)
                 return err
               }}
-              parentPgn={opening.pgn}
+              parentPgn={usePrefix ? opening.pgn : undefined}
               parentId={opening.id}
               isSaving={isSaving}
               currentTheme={currentTheme}

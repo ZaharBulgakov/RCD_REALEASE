@@ -461,9 +461,8 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
   }
 
   const handleDelete = () => {
-    if (!pgn.trim()) return
-    // Строим полный PGN, делаем undo через chess.js, берём только пользовательскую часть
     const fullPgn = parentPgn ? `${parentPgn} ${pgn.trim()}`.trim() : pgn.trim()
+    if (!fullPgn) return
     const game = new Chess()
     try {
       game.loadPgn(fullPgn)
@@ -477,8 +476,13 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
     const undone = game.undo()
     if (undone) {
       const newFullPgn = getCleanPgn(game)
+      // Если после undo остались ходы parentPgn — стриппим префикс как обычно
+      // Если ушли глубже — pgn будет содержать укороченный parentPgn, и серый префикс не покажется
       const newUserPgn = stripPrefix(newFullPgn)
-      setPgn(newUserPgn) // useEffect подхватит и обновит chessRef и fen
+      setPgn(newUserPgn)
+    } else {
+      // Уже в начале — очищаем всё
+      setPgn("")
     }
     setTimeout(syncScroll, 0)
   }
@@ -492,7 +496,10 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
   const renderPgnWithHighlights = () => {
     const elements: React.ReactNode[] = []
 
-    if (parentPgn) {
+    // Показываем серый префикс только когда pgn — это чисто пользовательские ходы поверх parentPgn
+    // Если pgn содержит часть ходов parentPgn (после undo) — не показываем префикс
+    const showPrefix = parentPgn && !pgn.trim()
+    if (showPrefix) {
       elements.push(
         <span key="prefix" className="text-foreground opacity-50 select-none">
           {parentPgn}{" "}
@@ -500,11 +507,15 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
       )
     }
 
-    if (!pgn) return elements
+    // Определяем стартовую позицию для подсветки ходов
+    const pgnToRender = pgn
+    const startingPgn = (parentPgn && pgn.trim()) ? parentPgn : undefined
 
-    const tokens = pgn.split(/(\s+)/)
+    if (!pgnToRender) return elements
+
+    const tokens = pgnToRender.split(/(\s+)/)
     const chess = new Chess()
-    if (parentPgn) { try { chess.loadPgn(parentPgn) } catch {} }
+    if (startingPgn) { try { chess.loadPgn(startingPgn) } catch {} }
 
     tokens.forEach((token, idx) => {
       if (!token.trim()) {
@@ -664,11 +675,10 @@ const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
           <textarea
             id="opening-pgn"
             ref={pgnInputRef}
-            value={parentPgn ? `${parentPgn} ${pgn}` : pgn}
+            value={parentPgn && !pgn.trim() ? parentPgn : parentPgn && pgn.trim() && !pgn.startsWith(parentPgn) ? `${parentPgn} ${pgn}` : pgn}
             onChange={(e) => {
               const val = e.target.value
-              if (parentPgn) {
-                if (!val.startsWith(parentPgn)) return
+              if (parentPgn && val.startsWith(parentPgn)) {
                 const prefix = parentPgn + " "
                 const userPart = val.startsWith(prefix) ? val.slice(prefix.length) : val.slice(parentPgn.length)
                 onPgnChange(userPart)
