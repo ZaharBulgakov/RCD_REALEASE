@@ -431,28 +431,37 @@ export function OpeningDetailScreen({
                           overflow: "visible",
                         }}
                       >
+                        {/* Внешний div — только контр-вращение */}
                         <div
                           ref={(el) => { if (el) cardRefsMap.current.set(m.id, el); else cardRefsMap.current.delete(m.id) }}
                           style={{
                             animation: `carousel-spin-reverse 20s linear ${getCardDelay(m.id)}ms infinite`,
                             willChange: "transform",
-                            transform: `scale(${MOB_MITTEL_SCALE})`,
-                            transformOrigin: "top left",
+                            transformOrigin: "center center",
                             width: MOB_CARD_RENDER_W,
-                            ...(isSelected ? accentGlow : {}),
                           }}
-                          className="mittel-card-wrapper"
                         >
-                          <OpeningCard
-                            opening={m}
-                            onDelete={async () => setDeleteId(m.id)}
-                            onEdit={onEdit}
-                            onStudy={() => handleMittelspielClick(m)}
-                            theme={currentTheme}
-                            isSaving={isSaving}
-                            isSelected={isSelected}
-                            compact hideActions
-                          />
+                          {/* Внутренний div — только масштаб */}
+                          <div
+                            style={{
+                              transform: `scale(${MOB_MITTEL_SCALE})`,
+                              transformOrigin: "center center",
+                              width: MOB_CARD_RENDER_W,
+                              ...(isSelected ? accentGlow : {}),
+                            }}
+                            className="mittel-card-wrapper"
+                          >
+                            <OpeningCard
+                              opening={m}
+                              onDelete={async () => setDeleteId(m.id)}
+                              onEdit={onEdit}
+                              onStudy={() => handleMittelspielClick(m)}
+                              theme={currentTheme}
+                              isSaving={isSaving}
+                              isSelected={isSelected}
+                              compact hideActions
+                            />
+                          </div>
                         </div>
                       </div>
                     )
@@ -471,7 +480,7 @@ export function OpeningDetailScreen({
                 >
                   <div style={{
                     transform: `scale(${MOB_CENTER_SCALE})`,
-                    transformOrigin: "top center",
+                    transformOrigin: "center center",
                     width: MOB_CENTER_RENDER_W,
                     ...accentGlow,
                   }}>
