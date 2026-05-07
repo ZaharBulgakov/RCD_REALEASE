@@ -362,6 +362,7 @@ export function HomeScreen({
                           isSelected={selectedIds.has(opening.id)}
                           onToggleSelect={toggleSelect}
                           onLongPress={handleLongPress}
+                          hideActions
                         />
                       </div>
                     </div>
