@@ -351,9 +351,9 @@ export function OpeningDetailScreen({
           </div>
 
           {/* Мобильная круговая карусель — только на мобильном */}
-          <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden">
+          <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden" style={{ touchAction: "none" }}>
             {/* Поиск */}
-            <div className="shrink-0 w-full px-4 pt-1 pb-2">
+            <div className="shrink-0 w-full px-4 pt-1 pb-2" style={{ touchAction: "auto" }}>
               <div className="relative w-full">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -362,6 +362,7 @@ export function OpeningDetailScreen({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Поиск миттельшпилей..."
                   className="h-8 w-full rounded-full border border-border bg-card pl-9 pr-4 text-[11px] outline-none transition focus:border-primary"
+                  style={{ touchAction: "auto" }}
                 />
               </div>
             </div>
@@ -369,7 +370,14 @@ export function OpeningDetailScreen({
             {/* Карусель — центрирована, вписана в экран */}
             <div className="flex flex-1 items-center justify-center overflow-hidden w-full">
               <div
-                style={{ width: MOB_CAROUSEL_SIZE, height: MOB_CAROUSEL_SIZE, position: "relative", flexShrink: 0 }}
+                style={{
+                  width: MOB_CAROUSEL_SIZE,
+                  height: MOB_CAROUSEL_SIZE,
+                  position: "relative",
+                  flexShrink: 0,
+                  touchAction: "none",
+                  userSelect: "none",
+                }}
               >
                 {/* Вращающийся контейнер */}
                 <div
