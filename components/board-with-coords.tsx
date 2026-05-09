@@ -1,15 +1,22 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { useEffect, useRef, useState } from "react"
 
+// Загружаем один раз на уровне модуля — все карточки используют один chunk
 const Chessboard = dynamic(
   async () => {
     const { Chessboard } = await import("react-chessboard")
     return { default: Chessboard }
   },
-  { ssr: false }
+  {
+    ssr: false,
+    // Показываем заглушку пока chunk грузится — убирает "пустое место"
+    loading: () => (
+      <div className="w-full aspect-square bg-muted/30 animate-pulse rounded" />
+    ),
+  }
 )
-import { useEffect, useRef, useState } from "react"
 
 type Props = {
   options?: {
@@ -28,19 +35,22 @@ type Props = {
 export function BoardWithCoords({ options, orientation, boardLight, boardDark }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [boardWidth, setBoardWidth] = useState<number>(0)
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     const el = containerRef.current
     if (!el) return
+
+    // Сразу читаем размер — не ждём следующего тика
+    const initialWidth = el.getBoundingClientRect().width
+    if (initialWidth > 0) setBoardWidth(initialWidth)
+
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width
-      if (width) setBoardWidth(width)
+      if (width) setBoardWidth(prev => width !== prev ? width : prev)
     })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ranks = orientation === "white" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8]
   const files = orientation === "white"
@@ -66,7 +76,7 @@ export function BoardWithCoords({ options, orientation, boardLight, boardDark }:
       </div>
 
       <div ref={containerRef} className="min-w-0">
-        {mounted && boardWidth > 0 && (
+        {boardWidth > 0 ? (
           <Chessboard
             key={orientation}
             options={{
@@ -81,6 +91,8 @@ export function BoardWithCoords({ options, orientation, boardLight, boardDark }:
               animationDurationInMs: options?.animationDurationInMs ?? 200,
             }}
           />
+        ) : (
+          <div className="w-full aspect-square bg-muted/20 rounded" />
         )}
       </div>
 

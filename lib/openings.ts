@@ -40,6 +40,16 @@ export type Collection = {
   createdAt: number
 }
 
+export type Party = {
+  id: string
+  userId: string
+  name: string
+  description: string
+  pgn: string
+  openingId: string
+  createdAt: number
+}
+
 export type ParsedPgn = {
   moves: string[] // SAN moves in order
   finalFen: string
@@ -48,6 +58,10 @@ export type ParsedPgn = {
   valid: boolean
   error?: string
 }
+
+
+// Глобальный кеш результатов parsePgn — Chess() очень дорогой, парсим каждый PGN только раз
+const parsePgnCache = new Map<string, ParsedPgn>()
 
 /**
  * Parse a PGN string robustly. Works with short strings / just moves.
@@ -69,6 +83,10 @@ export function parsePgn(pgn: string): ParsedPgn {
   const cleaned = pgn.trim()
   if (!cleaned) return { ...empty, error: "Empty PGN" }
 
+  // Кеш: не создаём Chess() повторно для одного и того же PGN
+  const cached = parsePgnCache.get(cleaned)
+  if (cached) return cached
+
   const chess = new Chess()
 
   // Attempt 1: native loadPgn (handles headers + moves)
@@ -76,13 +94,15 @@ export function parsePgn(pgn: string): ParsedPgn {
     chess.loadPgn(cleaned, { strict: false })
     const moves = chess.history()
     if (moves.length > 0) {
-      return {
+      const result: ParsedPgn = {
         moves,
         finalFen: chess.fen(),
         moveCount: moves.length,
         fullMoveCount: Math.ceil(moves.length / 2),
         valid: true,
       }
+      parsePgnCache.set(cleaned, result)
+      return result
     }
   } catch {
     // fall through to manual parse
@@ -121,13 +141,15 @@ export function parsePgn(pgn: string): ParsedPgn {
     return { ...empty, error: "No valid moves could be parsed" }
   }
 
-  return {
+  const result2: ParsedPgn = {
     moves: applied,
     finalFen: chess2.fen(),
     moveCount: applied.length,
     fullMoveCount: Math.ceil(applied.length / 2),
     valid: true,
   }
+  parsePgnCache.set(cleaned, result2)
+  return result2
 }
 
 /**

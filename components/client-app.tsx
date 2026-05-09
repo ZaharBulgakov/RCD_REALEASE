@@ -1,7 +1,7 @@
 "use client"
 
 import { CHESS_THEMES, type ChessTheme } from "@/lib/themes"
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, startTransition } from "react"
 import { HomeScreen } from "./home-screen"
 import { AddOpeningDialog } from "./add-opening-dialog"
 import { DeletionHistoryDialog } from "./deletion-history-dialog"
@@ -13,11 +13,13 @@ import { StudyScreen } from "./study-screen"
 import { AuthScreen } from "./auth-screen"
 import { ResultsScreen, type UnitResult } from "./results-screen"
 import { OpeningDetailScreen } from "./opening-detail-screen"
+import { PartyDetailScreen } from "./party-detail-screen"
 import {
   buildSession,
   parsePgn,
   type Opening,
   type Collection,
+  type Party,
   type SessionUnit,
   OPENINGS_LIMIT,
   COLLECTIONS_LIMIT,
@@ -60,6 +62,7 @@ type Screen =
     }
   | { name: "study"; opening: Opening; fromHistory?: boolean; initialOrientation?: "white" | "black" }
   | { name: "detail"; opening: Opening }
+  | { name: "party"; party: Party; opening: Opening }
 
 type DeletionLog = {
   id: string
@@ -92,12 +95,14 @@ export function ClientApp() {
   const [loading, setLoading] = useState(true)
   const [openings, setOpenings] = useState<Opening[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
+  const [parties, setParties] = useState<Party[]>([])
   const [record, setRecord] = useState<number | null>(null)
   const [screen, setScreen] = useState<Screen>({ name: "home" })
   const screenRef = useRef<Screen>({ name: "home" })
   const [addOpen, setAddOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editingOpening, setEditingOpening] = useState<Opening | null>(null)
+  const [addingPartyToId, setAddingPartyToId] = useState<string | null>(null)
   const [startOpen, setStartOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
   const [customInitialSelection, setCustomInitialSelection] = useState<string[]>([])
@@ -141,7 +146,11 @@ export function ClientApp() {
 
   const setScreenSafe = useCallback((s: Screen) => {
     screenRef.current = s
-    setScreen(s)
+    // startTransition помечает смену экрана как некритичное обновление —
+    // React не блокирует браузер во время рендера нового экрана
+    startTransition(() => {
+      setScreen(s)
+    })
   }, [])
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null)
   const [collectionOpeningIds, setCollectionOpeningIds] = useState<string[] | null>(null)
@@ -247,6 +256,7 @@ export function ClientApp() {
         if (ok) clearLegacyLocalStorageOnce(currentUser.id)
         await loadRecordFromDb(currentUser.id)
         await loadCollectionsFromDb(currentUser.id)
+        await loadPartiesFromDb(currentUser.id)
         await loadDeletionLogsFromDb(currentUser.id)
         // Only reset to home if user was previously logged out (not just auth refresh)
         // or if this is the initial load. Preserve all active states during tab switches.
@@ -260,6 +270,7 @@ export function ClientApp() {
       } else {
         setOpenings([])
         setCollections([])
+        setParties([])
         setRecord(null)
         setScreenSafe({ name: "home" })
       }
@@ -337,6 +348,101 @@ supabase.auth
     // CRITICAL: fully replace local state with Supabase snapshot.
     setOpenings(mapped)
     return true
+  }
+
+  async function loadPartiesFromDb(userId: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from("parties")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+    
+    if (error) {
+      console.error("Error loading parties:", error)
+      return false
+    }
+
+    const mapped: Party[] = data.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      description: row.description || "",
+      pgn: row.pgn,
+      openingId: row.opening_id,
+      createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now()
+    }))
+    setParties(mapped)
+    return true
+  }
+
+  async function handleAddParty(p: Partial<Party>): Promise<string | null> {
+    if (!user) return "Вы не авторизованы"
+    if (!addingPartyToId) return "Не указан дебют для партии"
+
+    setIsSaving(true)
+    try {
+      const id = generateId()
+      const { error } = await supabase.from("parties").insert({
+        id,
+        user_id: user.id,
+        opening_id: addingPartyToId,
+        name: p.name,
+        description: p.description,
+        pgn: p.pgn,
+        created_at: new Date().toISOString()
+      })
+
+      if (error) {
+        toast.error(`Ошибка при сохранении партии: ${error.message}`)
+        return error.message
+      }
+
+      const newParty: Party = {
+        id,
+        userId: user.id,
+        openingId: addingPartyToId,
+        name: p.name || "",
+        description: p.description || "",
+        pgn: p.pgn || "",
+        createdAt: Date.now()
+      }
+
+      setParties(prev => [newParty, ...prev])
+      toast.success("Партия добавлена")
+      return null
+    } finally {
+      setIsSaving(false)
+      setAddingPartyToId(null)
+    }
+  }
+
+  async function handleEditParty(p: Partial<Party>): Promise<string | null> {
+    if (!user) return "Вы не авторизованы"
+    if (!p.id) return "ID партии не указан"
+
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from("parties")
+        .update({
+          name: p.name,
+          description: p.description,
+          pgn: p.pgn
+        })
+        .eq("id", p.id)
+        .eq("user_id", user.id)
+
+      if (error) {
+        toast.error(`Ошибка при обновлении партии: ${error.message}`)
+        return error.message
+      }
+
+      setParties(prev => prev.map(item => item.id === p.id ? { ...item, ...p } : item))
+      toast.success("Партия обновлена")
+      return null
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function clearLegacyLocalStorageOnce(userId: string) {
@@ -1214,7 +1320,7 @@ supabase.auth
     }
   }
 
-function handleStart(config: SessionConfig) {
+const handleStart = useCallback((config: SessionConfig) => {
   // config.openingIds — готовый список id (корневые дебюты + их миттельшпили),
   // собранный в StartSessionDialog. Сторона определяется per-opening через leadingSide.
   const byId = new Map(openings.map((o) => [o.id, o]))
@@ -1246,9 +1352,9 @@ function handleStart(config: SessionConfig) {
     collectionOpeningIds: config.openingIds,
     isRandomColor: true,
   })
-}
+}, [openings, setScreenSafe])
 
-  function handleCustomStart(config: CustomSessionConfig) {
+  const handleCustomStart = useCallback((config: CustomSessionConfig) => {
     const byId = new Map(openings.map((o) => [o.id, o]))
     const chosen: Opening[] = config.openingIds.map((id) => byId.get(id)).filter(Boolean) as Opening[]
     if (chosen.length === 0) return
@@ -1285,9 +1391,9 @@ function handleStart(config: SessionConfig) {
       isRandomColor: config.color === "random",
       collectionOpeningIds: config.openingIds,
     })
-  }
+  }, [openings, setScreenSafe])
 
-  function handleStudy(opening: Opening, fromHistory?: boolean) {
+  const handleStudy = useCallback((opening: Opening, fromHistory?: boolean) => {
     let initialOrientation: "white" | "black"
     if (opening.leadingSide === "white" || opening.leadingSide === "black") {
       initialOrientation = opening.leadingSide
@@ -1296,9 +1402,9 @@ function handleStart(config: SessionConfig) {
       initialOrientation = finalFen.split(" ")[1] === "b" ? "white" : "black"
     }
     setScreenSafe({ name: "study", opening, fromHistory, initialOrientation })
-  }
+  }, [setScreenSafe])
 
-function handleStartCollection(openingIds: string[]) {
+const handleStartCollection = useCallback((openingIds: string[]) => {
   const selectedOpenings = openings.filter((o) => openingIds.includes(o.id))
   if (selectedOpenings.length === 0) {
     toast.error("В коллекции нет доступных дебютов")
@@ -1306,16 +1412,16 @@ function handleStartCollection(openingIds: string[]) {
   }
   setCollectionOpeningIds(openingIds)
   setStartOpen(true)
-}
+}, [openings])
 
-  function handleExit(fromStudyScreen?: boolean) {
+  const handleExit = useCallback((fromStudyScreen?: boolean) => {
     // invalidate session and return home
     const wasFromHistory = screen.name === "study" && screen.fromHistory
     setScreenSafe({ name: "home" })
     if (fromStudyScreen && wasFromHistory) {
       setHistoryOpen(true)
     }
-  }
+  }, [screen, setScreenSafe])
 
   async function maybeUpdateRecord(points: number) {
     if (!user) return
@@ -1337,7 +1443,7 @@ function handleStartCollection(openingIds: string[]) {
     }
   }
 
-function handleReplayFromResults() {
+const handleReplayFromResults = useCallback(() => {
   
   if (screen.name !== "results") return
   const failedUnits = screen.results.filter((r) => r.status === "failed").map((r) => r.unit)
@@ -1378,7 +1484,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
     advanced: screen.advanced,
     collectionOpeningIds: screen.collectionOpeningIds,  // добавь
   })
-}
+}, [screen, openings, globalFinishedIds, setScreenSafe])
 
   const handleAuth = useCallback(async (email: string, password: string, mode: "login" | "register") => {
     if (mode === "login") {
@@ -1413,16 +1519,16 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
     return null
   }, [])
 
-  async function handleLogout() {
+  const handleLogout = useCallback(async () => {
     setIsSaving(true)
     try {
       await supabase.auth.signOut()
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [])
 
-  async function handleFeedback(message: string) {
+  const handleFeedback = useCallback(async (message: string) => {
     if (!user) return "Вы не авторизованы"
     setIsSaving(true)
     try {
@@ -1437,7 +1543,32 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [user])
+
+  // Стабильные колбэки для HomeScreen — предотвращают лишние ре-рендеры при memo
+  // ВАЖНО: все хуки должны быть ДО условных return
+  const handleOpenStart = useCallback(() => setStartOpen(true), [])
+  const handleOpenCustomStart = useCallback((initialSelection?: string[]) => {
+    setCustomInitialSelection(initialSelection || [])
+    setCustomOpen(true)
+  }, [])
+  const handleEditOpening = useCallback((opening: Opening) => {
+    setEditingOpening(opening)
+    setAddOpen(true)
+  }, [])
+  const handleThemeChange = useCallback((theme: import("@/lib/themes").ChessTheme) => {
+    setCurrentTheme(theme)
+    localStorage.setItem("rcd_board_theme", theme.id)
+  }, [])
+  const handleLanguageChange = useCallback((l: "ru" | "en") => {
+    setLanguage(l)
+    localStorage.setItem("rcd_language", l)
+  }, [])
+  const handlePgnFormatChange = useCallback((f: "standard" | "short") => {
+    setPgnFormat(f)
+    localStorage.setItem("rcd_pgn_format", f)
+  }, [])
+  const handleOpenDetail = useCallback((o: Opening) => setScreenSafe({ name: "detail", opening: o }), [setScreenSafe])
 
   if (!mounted || loading) {
     return (
@@ -1454,28 +1585,23 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
     return <AuthScreen onAuth={handleAuth} onGoogleLogin={handleGoogleLogin} />
   }
 
-  return (
-    <>
-      {screen.name === "home" && (
+  // Один активный экран за раз — React не пересчитывает JSX всех экранов при смене screen
+  function renderScreen() {
+
+    if (screen.name === "home") return (
         <HomeScreen
           openings={openings}
           collections={collections}
           onAdd={handleAdd}
           onBulkAdd={handleBulkAdd}
-          onStart={() => setStartOpen(true)}
-          onCustomStart={(initialSelection) => {
-            setCustomInitialSelection(initialSelection || [])
-            setCustomOpen(true)
-          }}
+          onStart={handleOpenStart}
+          onCustomStart={handleOpenCustomStart}
           onDelete={handleDelete}
           onBulkDelete={handleBulkDelete}
-          onEdit={(opening) => {
-            setEditingOpening(opening)
-            setAddOpen(true)
-          }}
+          onEdit={handleEditOpening}
           onStudy={handleStudy}
           onLogout={handleLogout}
-          userEmail={user.email ?? "Пользователь"}
+          userEmail={user?.email ?? "Пользователь"}
           onSendFeedback={handleFeedback}
           record={record}
           onCreateCollection={handleCreateCollection}
@@ -1488,30 +1614,20 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
           setHistoryOpen={setHistoryOpen}
           deletionLogs={deletionLogs}
           currentTheme={currentTheme}
-          onThemeChange={(theme) => {
-            setCurrentTheme(theme)
-            localStorage.setItem("rcd_board_theme", theme.id)
-          }}
+          onThemeChange={handleThemeChange}
           isSaving={isSaving}
           onClearAllData={handleClearAllData}
           onRestore={handleRestoreSingle}
           onRestoreAll={handleRestoreAll}
           onClearAllLogs={handleClearAll}
-          onDetail={(o) => setScreenSafe({ name: "detail", opening: o })}
+          onDetail={handleOpenDetail}
           language={language}
-          onLanguageChange={(l) => {
-            setLanguage(l)
-            localStorage.setItem("rcd_language", l)
-          }}
+          onLanguageChange={handleLanguageChange}
           pgnFormat={pgnFormat}
-          onPgnFormatChange={(f) => {
-            setPgnFormat(f)
-            localStorage.setItem("rcd_pgn_format", f)
-          }}
+          onPgnFormatChange={handlePgnFormatChange}
         />
-      )}
-
-      {screen.name === "game" && (
+    )
+    if (screen.name === "game") return (
         <>
           {screen.mode === "names" ? (
             <NameGameScreen
@@ -1608,9 +1724,8 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
             />
           )}
         </>
-      )}
-
-      {screen.name === "results" && (
+    )
+    if (screen.name === "results") return (
         <ResultsScreen
           results={screen.results}
           totalSeconds={screen.totalSeconds}
@@ -1644,9 +1759,8 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
             return potentialSession.length > 0
           })()}
         />
-      )}
-
-      {screen.name === "study" && (
+    )
+    if (screen.name === "study") return (
         <StudyScreen 
           opening={screen.opening} 
           onExit={handleExit} 
@@ -1654,31 +1768,96 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
           initialOrientation={screen.initialOrientation} 
           pgnFormat={pgnFormat}
         />
-      )}
-      {screen.name === "detail" && (
+    )
+    if (screen.name === "detail") return (
         <OpeningDetailScreen
           opening={screen.opening}
           mittelspiels={openings.filter(o => o.parentId === screen.opening.id)}
+          parties={parties.filter(p => p.openingId === screen.opening.id)}
           onBack={() => setScreenSafe({ name: "home" })}
           onStudy={(o: Opening) => setScreenSafe({ name: "study", opening: o })}
+          onStudyParty={(p: Party) => setScreenSafe({ name: "study", opening: { ...p, id: p.id, name: p.name, description: p.description, pgn: p.pgn, createdAt: p.createdAt, leadingSide: "random" } })}
           onEdit={(o: Opening) => {
             setEditingOpening(o)
             setAddOpen(true)
           }}
+          onEditParty={(p: Party) => {
+            setAddingPartyToId(p.openingId)
+            setEditingOpening({ id: p.id, name: p.name, description: p.description, pgn: p.pgn, createdAt: p.createdAt, leadingSide: "random" })
+            setAddOpen(true)
+          }}
           onDelete={handleDelete}
+          onDeleteParty={async (id: string) => {
+            if (!user) return
+            setIsSaving(true)
+            try {
+              await supabase.from("parties").delete().eq("id", id).eq("user_id", user.id)
+              setParties(prev => prev.filter(p => p.id !== id))
+            } finally {
+              setIsSaving(false)
+            }
+          }}
           onAddMittelspiel={handleAdd}
+          onAddParty={() => {
+            setAddingPartyToId(screen.opening.id)
+            setEditingOpening({ id: "", name: "", description: "", pgn: "", createdAt: Date.now(), leadingSide: "random" })
+            setAddOpen(true)
+          }}
+          onPartyClick={(p: Party) => setScreenSafe({ name: "party", party: p, opening: screen.opening })}
           currentTheme={currentTheme}
           isSaving={isSaving}
         />
-      )}
+    )
+    if (screen.name === "party") return (
+         <PartyDetailScreen
+           party={screen.party}
+           onBack={() => setScreenSafe({ name: "detail", opening: screen.opening })}
+           onStudy={(p: Party) => setScreenSafe({ name: "study", opening: { id: p.id, name: p.name, description: p.description, pgn: p.pgn, createdAt: p.createdAt, leadingSide: "random" } })}
+           onEdit={(p: Party) => {
+             setAddingPartyToId(p.openingId)
+             setEditingOpening({ id: p.id, name: p.name, description: p.description, pgn: p.pgn, createdAt: p.createdAt, leadingSide: "random" })
+             setAddOpen(true)
+           }}
+          onDelete={async (id: string) => {
+            if (!user) return
+            setIsSaving(true)
+            try {
+              await supabase.from("parties").delete().eq("id", id).eq("user_id", user.id)
+              setParties(prev => prev.filter(p => p.id !== id))
+              setScreenSafe({ name: "detail", opening: screen.opening })
+            } finally {
+              setIsSaving(false)
+            }
+          }}
+          currentTheme={currentTheme}
+          isSaving={isSaving}
+        />
+    )
+    return null
+  }
+
+
+  return (
+    <>
+      {renderScreen()}
+
 
       <AddOpeningDialog
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open)
-          if (!open) setEditingOpening(null)
+          if (!open) {
+            setEditingOpening(null)
+            setAddingPartyToId(null)
+          }
         }}
-        onSave={editingOpening ? handleEdit : handleAdd}
+        onSave={
+          addingPartyToId
+            ? (p) => (editingOpening?.id ? handleEditParty(p as any) : handleAddParty(p as any))
+            : editingOpening
+            ? handleEdit
+            : handleAdd
+        }
         initialOpening={editingOpening}
         parentPgn={editingOpening?.parentId ? openings.find(o => o.id === editingOpening.parentId)?.pgn : undefined}
         parentId={editingOpening?.parentId}

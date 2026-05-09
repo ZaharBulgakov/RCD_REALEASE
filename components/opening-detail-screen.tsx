@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen, Eye, X } from "lucide-react"
+import React, { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react"
+import { Pencil, Trash2, ArrowLeft, Plus, Search, Info, BookOpen, Eye, X, Trophy } from "lucide-react"
 import { OpeningCard } from "./opening-card"
-import { type Opening, parsePgn } from "@/lib/openings"
+import { type Opening, type Party, parsePgn } from "@/lib/openings"
 import { Button } from "./ui/button"
 import { ScrollArea } from "./ui/scroll-area"
 import { Separator } from "./ui/separator"
@@ -12,15 +12,22 @@ import type { ChessTheme } from "@/lib/themes"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AddOpeningForm } from "./add-opening-form"
 import { BoardWithCoords } from "./board-with-coords"
+import { FullPartiesSection } from "./full-parties-section"
 
 type Props = {
   opening: Opening
   mittelspiels: Opening[]
-  onBack: () => void
+  parties: Party[]
+  onBack: () => void  // wrapped in startTransition at call site
   onStudy: (opening: Opening) => void
+  onStudyParty: (party: Party) => void
   onEdit: (opening: Opening) => void
+  onEditParty: (party: Party) => void
   onDelete: (id: string) => Promise<void>
+  onDeleteParty: (id: string) => Promise<void>
   onAddMittelspiel: (opening: Opening) => Promise<string | null>
+  onAddParty: () => void
+  onPartyClick: (party: Party) => void
   currentTheme: ChessTheme
   isSaving?: boolean
 }
@@ -42,14 +49,42 @@ const MOB_CENTER_W = Math.round(MOB_CENTER_RENDER_W * MOB_CENTER_SCALE)
 const MOB_ORBIT = 135
 const MOB_CAROUSEL_SIZE = MOB_ORBIT * 2 + MOB_MITTEL_W + 8
 
+function AlertTriangle({ className, ...props }: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  )
+}
+
 export function OpeningDetailScreen({
   opening,
   mittelspiels,
+  parties,
   onBack,
   onStudy,
+  onStudyParty,
   onEdit,
+  onEditParty,
   onDelete,
+  onDeleteParty,
   onAddMittelspiel,
+  onAddParty,
+  onPartyClick,
   currentTheme,
   isSaving = false,
 }: Props) {
@@ -59,7 +94,9 @@ export function OpeningDetailScreen({
   const [usePrefix, setUsePrefix] = useState(true)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
+  const [view, setView] = useState<"carousel" | "parties">("carousel")
   const [previewOpen, setPreviewOpen] = useState(false)
+  const currentPlaybackRate = useRef(1)
   // Web Animations API refs для плавного управления скоростью карусели
   const carouselRef = useRef<HTMLDivElement | null>(null)
   const mobCarouselRef = useRef<HTMLDivElement | null>(null)
@@ -119,6 +156,7 @@ export function OpeningDetailScreen({
 
   // Плавно интерполирует playbackRate у всех анимаций карусели
   const animateRate = useCallback((targetRate: number, durationMs: number) => {
+    currentPlaybackRate.current = targetRate
     if (rateRafRef.current) cancelAnimationFrame(rateRafRef.current)
 
     const anims: Animation[] = []
@@ -127,20 +165,49 @@ export function OpeningDetailScreen({
     cardRefsMap.current.forEach((el) => anims.push(...el.getAnimations()))
     if (anims.length === 0) return
 
-    const startRates = anims.map((a) => a.playbackRate)
+    const startRates = anims.map((a) => a.playbackRate ?? 1)
     const startTime = performance.now()
 
     const tick = (now: number) => {
       const t = Math.min((now - startTime) / durationMs, 1)
-      // ease-in-out cubic
       const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-      anims.forEach((anim, i) => {
-        anim.playbackRate = startRates[i] + (targetRate - startRates[i]) * ease
+      
+      const currentAnims: Animation[] = []
+      if (carouselRef.current) currentAnims.push(...carouselRef.current.getAnimations())
+      if (mobCarouselRef.current) currentAnims.push(...mobCarouselRef.current.getAnimations())
+      cardRefsMap.current.forEach((el) => currentAnims.push(...el.getAnimations()))
+
+      currentAnims.forEach((a, i) => {
+        const start = startRates[i] ?? 1
+        a.updatePlaybackRate(start + (targetRate - start) * ease)
       })
-      if (t < 1) rateRafRef.current = requestAnimationFrame(tick)
+
+      if (t < 1) {
+        rateRafRef.current = requestAnimationFrame(tick)
+      }
     }
+
     rateRafRef.current = requestAnimationFrame(tick)
   }, [])
+
+  // Синхронизация анимаций только при изменении карусели, не при каждом рендере
+  // Убран пустой dep array — теперь не вызывает layout thrashing при каждом рендере
+  useEffect(() => {
+    const syncRate = () => {
+      const anims: Animation[] = []
+      if (carouselRef.current) anims.push(...carouselRef.current.getAnimations())
+      if (mobCarouselRef.current) anims.push(...mobCarouselRef.current.getAnimations())
+      cardRefsMap.current.forEach((el) => anims.push(...el.getAnimations()))
+      anims.forEach(a => {
+        if (a.playbackRate !== currentPlaybackRate.current) {
+          a.updatePlaybackRate(currentPlaybackRate.current)
+        }
+      })
+    }
+    // Запускаем через rAF — не блокируем главный поток в момент рендера
+    const id = requestAnimationFrame(syncRate)
+    return () => cancelAnimationFrame(id)
+  }, [mittelspiels])
 
   const handleMittelspielClick = (m: Opening) => {
     setSelectedMittelspiel(m)
@@ -151,6 +218,7 @@ export function OpeningDetailScreen({
     rateTimerRef.current = setTimeout(() => animateRate(1, 1500), 2500)
   }
 
+  // Функции для расчета позиций в карусели
   const getPos = (index: number, total: number) => {
     if (total === 0) return { x: 0, y: 0 }
     // Равномерное распределение: -90° чтобы первая карточка была сверху
@@ -182,7 +250,7 @@ export function OpeningDetailScreen({
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
       {/* ХЕДЕР */}
       <header className="relative flex h-14 shrink-0 items-center justify-center border-b border-border bg-card/50 px-3 sm:px-6 backdrop-blur-md z-50">
-        <Button variant="ghost" onClick={onBack} className="hidden sm:flex absolute left-3 gap-1 sm:gap-2 rounded-xl font-bold uppercase tracking-wide sm:tracking-widest px-2 sm:px-4 text-[10px] sm:text-xs sm:text-sm">
+        <Button variant="ghost" onClick={() => startTransition(onBack)} className="hidden sm:flex absolute left-3 gap-1 sm:gap-2 rounded-xl font-bold uppercase tracking-wide sm:tracking-widest px-2 sm:px-4 text-[10px] sm:text-xs sm:text-sm">
           <ArrowLeft className="h-5 w-5" />
           Назад
         </Button>
@@ -196,17 +264,34 @@ export function OpeningDetailScreen({
         {/* ЦЕНТРАЛЬНАЯ ОБЛАСТЬ */}
         <main className="relative flex flex-1 flex-col sm:items-center sm:justify-center overflow-hidden bg-accent/5">
 
-          {/* Кнопка "Добавить" — только на десктопе, z-30 поверх карусели */}
-          <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto hidden sm:block">
-            <Button
-              onClick={() => setAddDialogOpen(true)}
-              className="h-8 sm:h-10 rounded-full px-3 sm:px-6 text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-widest"
-              style={accentGlow}
-            >
-              <Plus className="mr-2 h-3.5 w-3.5" />
-              Добавить миттельшпиль
-            </Button>
-          </div>
+          {view === "carousel" ? (
+            <>
+              {/* Карточка "Полноценные партии" — в правом верхнем углу */}
+              <div className="absolute right-4 top-4 z-40 sm:right-8 sm:top-8">
+                <div
+                  onClick={() => setView("parties")}
+                  className="group flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-border bg-card/50 p-3 text-center backdrop-blur-md transition hover:border-primary/50 hover:bg-card/80 shadow-lg"
+                  style={accentGlow}
+                >
+                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition group-hover:scale-110">
+                    <Trophy className="h-5 w-5 text-gold" />
+                  </div>
+                  <h3 className="text-[10px] font-black uppercase tracking-wider">Партии</h3>
+                  <p className="text-[8px] text-muted-foreground">{parties.length} шт.</p>
+                </div>
+              </div>
+
+              {/* Кнопки "Добавить" — только на десктопе */}
+              <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto hidden sm:flex gap-3">
+                <Button
+                  onClick={() => setAddDialogOpen(true)}
+                  className="h-8 sm:h-10 rounded-full px-3 sm:px-6 text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-widest"
+                  style={accentGlow}
+                >
+                  <Plus className="mr-2 h-3.5 w-3.5" />
+                  Добавить миттельшпиль
+                </Button>
+              </div>
 
           {/* Карусель — только на десктопе */}
           <div
@@ -317,7 +402,6 @@ export function OpeningDetailScreen({
                 )
               })}
             </div>
-
             {/* Центральный дебют — поверх всего, не вращается */}
             <div
               className="relative z-20 transition-all duration-500 hover:scale-105"
@@ -336,20 +420,6 @@ export function OpeningDetailScreen({
             </div>
           </div>
 
-          {/* Поиск снизу — только на десктопе */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-6 hidden sm:block">
-            <div className="group relative w-full">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Поиск миттельшпилей..."
-                className="h-10 w-full rounded-full border border-border bg-card pl-11 pr-5 text-[11px] sm:text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
-                style={accentGlow}
-              />
-            </div>
-          </div>
 
           {/* Мобильная круговая карусель — только на мобильном */}
           <div className="flex flex-1 flex-col items-center overflow-hidden sm:hidden">
@@ -466,41 +536,66 @@ export function OpeningDetailScreen({
                       </div>
                     )
                   })}
-                </div>
 
-                {/* Центральная карточка */}
-                <div
-                  className="absolute z-20"
-                  style={{
-                    left: "50%", top: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: MOB_CENTER_RENDER_W,
-                    overflow: "visible",
-                  }}
-                >
-                  <div style={{
-                    transform: `scale(${MOB_CENTER_SCALE})`,
-                    transformOrigin: "center center",
-                    width: MOB_CENTER_RENDER_W,
-                    ...accentGlow,
-                  }}>
-                  <OpeningCard
-                    opening={opening}
-                    onDelete={async () => setDeleteId(opening.id)}
-                    onEdit={onEdit}
-                    onStudy={() => setSelectedMittelspiel(null)}
-                    theme={currentTheme}
-                    isSaving={isSaving}
-                    isSelected={isMainOpening}
-                    compact hideActions
-                  />
-                  </div>
                 </div>
               </div>
             </div>
-
           </div>
 
+              {/* Поиск снизу — только на десктопе */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-6 hidden sm:block">
+                <div className="group relative w-full">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Поиск миттельшпилей..."
+                    className="h-10 w-full rounded-full border border-border bg-card pl-11 pr-5 text-[11px] sm:text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
+                    style={accentGlow}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex h-full w-full flex-col bg-background/30 backdrop-blur-sm">
+              <div className="flex shrink-0 items-center justify-between border-b border-border p-4 sm:px-8 sm:py-6">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setView("carousel")}
+                    className="rounded-full hover:bg-primary/10"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <div>
+                    <h2 className="text-sm sm:text-lg font-black uppercase tracking-wider text-primary">Полноценные партии</h2>
+                    <p className="text-[10px] text-muted-foreground">{parties.length} шт.</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={onAddParty}
+                  className="rounded-full font-bold uppercase tracking-widest shadow-lg h-9 sm:h-11 px-4 sm:px-8 text-[10px] sm:text-sm"
+                  style={accentGlow}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Добавить партию
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-hidden">
+                <FullPartiesSection
+                  parties={parties}
+                  opening={opening}
+                  onPartyClick={onPartyClick}
+                  onAddParty={onAddParty}
+                  currentTheme={currentTheme}
+                  isSaving={isSaving}
+                />
+              </div>
+            </div>
+          )}
         </main>
 
         {/* ПРАВАЯ ПАНЕЛЬ — с триггером на границе */}
@@ -599,22 +694,21 @@ export function OpeningDetailScreen({
               Редактировать
             </Button>
             <Button
-              variant="ghost"
-              onClick={() => setDeleteId(activeOpening.id)}
-              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wide sm:tracking-widest text-error hover:bg-error/10 hover:text-error"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Удалить
-            </Button>
-          </div>
-          </aside>
+            variant="ghost"
+            onClick={() => setDeleteId(activeOpening.id)}
+            className="w-full h-12 rounded-2xl font-bold uppercase tracking-wide sm:tracking-widest text-error hover:bg-error/10 hover:text-error"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Удалить
+          </Button>
         </div>
+        </aside>
       </div>
 
       {/* Мобильная нижняя панель действий — вне overflow-hidden, прижата к низу */}
       <div className="flex shrink-0 items-center justify-around border-t border-border bg-card/80 px-4 py-2 backdrop-blur-md sm:hidden" style={{ touchAction: "auto" }}>
         <button
-          onClick={onBack}
+          onClick={() => startTransition(onBack)}
           className="flex flex-col items-center gap-1 rounded-xl p-2 text-muted-foreground transition hover:text-primary"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -734,26 +828,6 @@ export function OpeningDetailScreen({
         }
       `}</style>
     </div>
-  )
-}
-
-function AlertTriangle(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-    </svg>
+    </div>
   )
 }

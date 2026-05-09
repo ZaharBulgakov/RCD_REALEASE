@@ -14,7 +14,7 @@
  * 6. Остался режим "Усложнённый (Названия)" — опциональный toggle.
  */
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback, useRef, useEffect } from "react"
 import { Check, BookOpen, ChevronDown, ChevronUp, Layers } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "./ui/button"
@@ -47,6 +47,53 @@ type Props = {
   currentTheme: ChessTheme
 }
 
+// ── LazyBoard — монтирует доску только когда элемент виден в скролле ─────────
+
+type LazyBoardProps = {
+  orientation: "white" | "black"
+  position: string
+  boardLight?: string
+  boardDark?: string
+  boardId: string
+}
+
+function LazyBoard({ orientation, position, boardLight, boardDark, boardId }: LazyBoardProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect() } },
+      { rootMargin: "100px" }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={ref} className="pointer-events-none h-full w-full select-none">
+      {visible ? (
+        <BoardWithCoords
+          orientation={orientation}
+          boardLight={boardLight}
+          boardDark={boardDark}
+          options={{
+            id: boardId,
+            position,
+            allowDragging: false,
+            showAnimations: false,
+            boardStyle: { width: "100%", height: "100%" },
+          }}
+        />
+      ) : (
+        <div className="h-full w-full bg-muted/30 animate-pulse rounded" />
+      )}
+    </div>
+  )
+}
+
 // ── Компонент ────────────────────────────────────────────────────────────────
 
 export function StartSessionDialog({
@@ -57,10 +104,10 @@ export function StartSessionDialog({
   isSaving,
   currentTheme,
 }: Props) {
-  const s = getStyles(currentTheme)
-  const accentGlow = {
+  const s = useMemo(() => getStyles(currentTheme), [currentTheme])
+  const accentGlow = useMemo(() => ({
     boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 60%, transparent), 0 0 16px 2px ${s.glow}`,
-  }
+  }), [s.accent, s.glow])
 
   // Только корневые дебюты (без parentId)
   const rootOpenings = useMemo(
@@ -118,6 +165,15 @@ export function StartSessionDialog({
     }
     return { totalCount: total, breakdown: bd }
   }, [selectedRootIds, rootOpenings, mittelspielMap])
+
+  // Кешируем parsePgn для всех дебютов — не пересчитываем при каждом рендере
+  const parsedMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof parsePgn>>()
+    for (const o of openings) {
+      map.set(o.id, parsePgn(o.pgn))
+    }
+    return map
+  }, [openings])
 
   function handleStart() {
     if (selectedRootIds.size === 0) return
@@ -185,7 +241,7 @@ export function StartSessionDialog({
                 const isSelected = selectedRootIds.has(root.id)
                 const mittels = mittelspielMap.get(root.id) ?? []
                 const isExpanded = expandedId === root.id
-                const parsed = parsePgn(root.pgn)
+                const parsed = parsedMap.get(root.id)!
                 const boardOrientation: "white" | "black" =
                   root.leadingSide === "white"
                     ? "white"
@@ -211,20 +267,13 @@ export function StartSessionDialog({
                     >
                       {/* Мини-доска */}
                       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-border/50">
-                        <div className="pointer-events-none h-full w-full select-none">
-                          <BoardWithCoords
-                            orientation={boardOrientation}
-                            boardLight={currentTheme.systemDesign?.boardLight}
-                            boardDark={currentTheme.systemDesign?.boardDark}
-                            options={{
-                              id: `sess-${root.id}`,
-                              position: parsed.finalFen,
-                              allowDragging: false,
-                              showAnimations: false,
-                              boardStyle: { width: "100%", height: "100%" },
-                            }}
-                          />
-                        </div>
+                        <LazyBoard
+                          orientation={boardOrientation}
+                          position={parsed.finalFen}
+                          boardLight={currentTheme.systemDesign?.boardLight}
+                          boardDark={currentTheme.systemDesign?.boardDark}
+                          boardId={`sess-${root.id}`}
+                        />
                       </div>
 
                       {/* Текст */}
@@ -273,7 +322,7 @@ export function StartSessionDialog({
                     {isExpanded && mittels.length > 0 && (
                       <div className="border-t border-border/50 bg-muted/30 px-3 py-2 space-y-1">
                         {mittels.map((m) => {
-                          const mp = parsePgn(m.pgn)
+                          const mp = parsedMap.get(m.id)!
                           return (
                             <div key={m.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
                               <Layers className="h-3 w-3 shrink-0 text-muted-foreground" />

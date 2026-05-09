@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react"
+import { memo, useMemo, useRef, useState, useCallback, startTransition } from "react"
 import { Plus, Play, Search, Swords, Zap, Headset, UserCircle2, LogOut, Gamepad2, Moon, SortAsc, Calendar, LayoutGrid, AlertTriangle, Trash2, Clock, History, RotateCcw, Check, X, FolderPlus, Folder, MoreVertical, Edit2, PlayCircle, Paintbrush, ChevronDown, Pencil, Settings, Info, MessageSquare, Languages, Type } from "lucide-react"
 import { OpeningCard } from "./opening-card"
 import { parsePgn, type Opening, type Collection, OPENINGS_LIMIT, COLLECTIONS_LIMIT } from "@/lib/openings"
@@ -64,7 +64,7 @@ type Props = {
   onPgnFormatChange: (format: "standard" | "short") => void
 }
 
-export function HomeScreen({
+export const HomeScreen = memo(function HomeScreen({
   openings,
   collections = [],
   onAdd,
@@ -101,9 +101,13 @@ export function HomeScreen({
   pgnFormat,
   onPgnFormatChange,
 }: Props) {
-  const s = getStyles(currentTheme)
-  const accentBorder = { boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 100%, transparent)` }
-  const accentGlow = { boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 100%, transparent), 0 0 24px 4px ${s.glow}` }
+const s = useMemo(() => getStyles(currentTheme), [currentTheme])
+const accentBorder = useMemo(() => ({ 
+  boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 100%, transparent)` 
+}), [s.accent])
+const accentGlow = useMemo(() => ({ 
+  boxShadow: `0 0 0 1px color-mix(in srgb, ${s.accent} 100%, transparent), 0 0 24px 4px ${s.glow}` 
+}), [s.accent, s.glow])
   
   const [query, setQuery] = useState("")
   const [sortBy, setSortBy] = useState<"name" | "date">("date")
@@ -114,7 +118,6 @@ export function HomeScreen({
   const [feedbackSaving, setFeedbackSaving] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -136,20 +139,20 @@ export function HomeScreen({
     return deletionLogs.filter(log => new Date(log.deleted_at).getTime() > oneDayAgo).slice(0, 15)
   }, [deletionLogs])
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
-  }
+  }, [])
 
-  const handleLongPress = (opening: Opening) => {
+  const handleLongPress = useCallback((opening: Opening) => {
     setIsDeleteMode(true)
     setIsCollectionMode(false)
     setSelectedIds(new Set([opening.id]))
-  }
+  }, [])
 
   const handleAddToExistingCollection = async (collectionId: string) => {
     const collection = collections.find(c => c.id === collectionId)
@@ -209,10 +212,6 @@ export function HomeScreen({
     setEditingCollectionId(null)
   }
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   const filtered = useMemo(() => {
     let pool = openings.filter(o => !o.parentId)
     if (activeCollectionId) {
@@ -243,13 +242,15 @@ export function HomeScreen({
     return result
   }, [filtered, sortBy, sortOrder])
 
+  const handleCardDelete = useCallback(async (id: string) => {
+    setDeleteId(id)
+  }, [])
+
   const confirmDelete = async () => {
     if (!deleteId) return
     await onDelete(deleteId)
     setDeleteId(null)
   }
-
-  if (!mounted) return null
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300">
@@ -353,7 +354,7 @@ export function HomeScreen({
                       <div className="transition-transform duration-300 hover:scale-105 active:scale-95">
                         <OpeningCard
                           opening={opening}
-                          onDelete={async (id) => setDeleteId(id)}
+                          onDelete={handleCardDelete}
                           onEdit={onEdit}
                           onStudy={onDetail}
                           theme={currentTheme}
@@ -387,7 +388,7 @@ export function HomeScreen({
               <input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { const v = e.target.value; startTransition(() => setQuery(v)) }}
                 placeholder={activeCollectionId ? "Поиск в коллекции..." : "Поиск по всей библиотеке..."}
                 className="h-11 sm:h-14 w-full rounded-full border border-border bg-card pl-11 sm:pl-12 pr-4 sm:pr-6 text-[11px] sm:text-sm sm:text-base outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/5"
                 style={accentGlow}
@@ -763,7 +764,7 @@ export function HomeScreen({
       </Dialog>
     </div>
   )
-}
+})
 
 function pluralOpenings(n: number): string {
   const mod10 = n % 10

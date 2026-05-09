@@ -3,7 +3,7 @@
 import { Pencil, Trash2, Check } from "lucide-react"
 import type { Opening } from "@/lib/openings"
 import { parsePgn } from "@/lib/openings"
-import { useMemo, useRef, useState } from "react"
+import { memo, useMemo, useRef, useState } from "react"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
 import { getStyles } from "@/lib/styles"
@@ -26,7 +26,7 @@ type Props = {
   hideActions?: boolean
 }
 
-export function OpeningCard({
+export const OpeningCard = memo(function OpeningCard({
   opening,
   onDelete,
   onEdit,
@@ -333,7 +333,7 @@ export function OpeningCard({
       </div>
     </div>
   )
-}
+})
 
 function pluralMoves(n: number): string {
   const mod10 = n % 10
