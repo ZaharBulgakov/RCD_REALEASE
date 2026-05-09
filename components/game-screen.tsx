@@ -19,6 +19,7 @@ import { parsePgn } from "@/lib/openings"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
 import { chessSounds } from "@/lib/sounds"
+//
 
 type Props = {
   session: SessionUnit[]
