@@ -13,29 +13,34 @@ import {
   Link2,
   ArrowRight,
   RotateCcw,
+  RefreshCw,
+  Clock,
+  Trophy,
+  ArrowLeft,
+  MessageSquare,
+  Compass,
 } from "lucide-react"
-import type { Opening, SessionUnit, ParsedPgn } from "@/lib/openings"
+import type { Opening, SessionUnit, ParsedPgn, MarkerType } from "@/lib/openings"
 import { parsePgn } from "@/lib/openings"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
 import { chessSounds } from "@/lib/sounds"
+import { Button } from "./ui/button"
 //
+
+type UnitResult = {
+  unit: SessionUnit
+  status: "won" | "failed"
+  seconds: number
+}
 
 type Props = {
   session: SessionUnit[]
   color: "white" | "black" | "random"
   onExit: () => void
-  onFinish: (summary: {
-    results: Array<{
-      unit: SessionUnit
-      status: "won" | "failed"
-      seconds: number
-    }>
-    totalSeconds: number
-    isRandomColor?: boolean
-  }) => void
-  scoringEnabled: boolean
+  onFinish: (args: { results: UnitResult[]; totalSeconds: number; isRandomColor: boolean }) => void
   theme: ChessTheme
+  scoringEnabled?: boolean
 }
 
 type Status = "playing" | "won" | "failed"
@@ -87,7 +92,75 @@ export function GameScreen({ session, color, onExit, onFinish, scoringEnabled, t
   const [moveIdx, setMoveIdx] = useState(0)
   const [status, setStatus] = useState<Status>("playing")
   const [toast, setToast] = useState<{ kind: "success" | "error"; text: string } | null>(null)
-  const [pgnOpen, setPgnOpen] = useState(false)
+  const [pgnOpen, setPgnOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rcd_pgn_drawer_open") !== "false"
+    }
+    return false
+  })
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rcd_pgn_drawer_open", String(pgnOpen))
+    }
+  }, [pgnOpen])
+
+  const [showHints, setShowHints] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rcd_show_hints_training") === "true"
+    }
+    return false
+  })
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rcd_show_hints_training", String(showHints))
+    }
+  }, [showHints])
+
+  const studyMetadata = (currentOpening as any).studyMetadata || { markers: {}, arrows: {}, comments: {} }
+  const currentMarkers = useMemo(() => (studyMetadata.markers || {})[moveIdx] || [], [studyMetadata.markers, moveIdx])
+  const currentArrows = useMemo(() => (studyMetadata.arrows || {})[moveIdx] || [], [studyMetadata.arrows, moveIdx])
+  const currentComment = useMemo(() => (studyMetadata.comments || {})[moveIdx] || "", [studyMetadata.comments, moveIdx])
+
+  const markerColors: Record<MarkerType, string> = {
+    blunder: "rgba(239, 68, 68, 0.4)",
+    brilliant: "rgba(20, 184, 166, 0.4)",
+    great: "rgba(59, 130, 246, 0.4)",
+    mistake: "rgba(249, 115, 22, 0.4)",
+    inaccuracy: "rgba(234, 179, 8, 0.4)",
+    deviation: "rgba(168, 85, 247, 0.4)",
+    none: "transparent"
+  }
+
+  const markerIcons: Record<MarkerType, string> = {
+    blunder: "??",
+    brilliant: "!!",
+    great: "!",
+    mistake: "?",
+    inaccuracy: "!?",
+    deviation: "?",
+    none: ""
+  }
+
+  const CustomSquare = useCallback(({ square, children }: any) => {
+    if (!showHints) return <div style={{ position: "relative", width: "100%", height: "100%" }}>{children}</div>
+    
+    const marker = (currentMarkers as any[]).find(m => m.square === square)
+    const bgColor = marker ? markerColors[marker.type as MarkerType] : "transparent"
+    const icon = marker ? markerIcons[marker.type as MarkerType] : ""
+
+    return (
+      <div style={{ position: "relative", width: "100%", height: "100%", backgroundColor: bgColor }}>
+        {children}
+        {icon && (
+          <div className="absolute top-0.5 right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-background/80 text-[10px] font-bold shadow-sm">
+            {icon}
+          </div>
+        )}
+      </div>
+    )
+  }, [currentMarkers, showHints])
   const [descOpen, setDescOpen] = useState(false)
   const [exitConfirm, setExitConfirm] = useState(false)
   const [transitionKey, setTransitionKey] = useState(0)
@@ -660,19 +733,48 @@ function handleContinue() {
               boxShadow: `0 0 0 0px color-mix(in srgb, var(--primary) 35%, transparent), 0 0 100px 15px ${theme.systemDesign?.cardGlow ?? "transparent"}`
             }}
           >
-            <BoardWithCoords
-              orientation={playerColor}
-              boardLight={theme.systemDesign?.boardLight}
-              boardDark={theme.systemDesign?.boardDark}
-              options={{
-                id: `game-${unit.kind === "pair" ? unit.short.id + "-" + unit.long.id : unit.opening.id}`,
-                position: fen,
-                onPieceDrop,
-                animationDurationInMs: 260,
-                showAnimations: true,
-                allowDragging: status === "playing" && !promotionData,
-              }}
-            />
+              <BoardWithCoords
+                orientation={playerColor}
+                boardLight={theme.systemDesign?.boardLight}
+                boardDark={theme.systemDesign?.boardDark}
+                customSquare={CustomSquare}
+                options={{
+                  id: `game-${unit.kind === "pair" ? unit.short.id + "-" + unit.long.id : unit.opening.id}`,
+                  position: fen,
+                  onPieceDrop,
+                  animationDurationInMs: 260,
+                  showAnimations: true,
+                  allowDragging: status === "playing" && !promotionData,
+                  arrows: showHints ? currentArrows.map((a: any) => ({
+                    startSquare: a.from,
+                    endSquare: a.to,
+                    color: a.type === "attack" ? "rgba(239, 68, 68, 0.6)" : "rgba(59, 130, 246, 0.6)"
+                  })) : [],
+                }}
+              />
+
+              {/* Study Hints & Comments in Game */}
+              <div className="absolute top-3 right-3 flex flex-col items-end gap-2 pointer-events-none">
+                 <button
+                   onClick={() => setShowHints(!showHints)}
+                   className={`pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-border shadow-lg transition ${
+                     showHints ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground"
+                   }`}
+                   title={showHints ? "Скрыть подсказки" : "Показать подсказки"}
+                 >
+                   <Compass className="h-4 w-4" />
+                 </button>
+                 
+                 {showHints && currentComment && (
+                   <div className="pointer-events-auto max-w-[200px] rounded-xl border border-border bg-card/80 p-3 shadow-xl backdrop-blur-md animate-in slide-in-from-right-4 duration-300">
+                      <div className="flex items-center gap-2 mb-1">
+                        <MessageSquare className="h-3 w-3 text-primary" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Идея хода</span>
+                      </div>
+                      <p className="text-[11px] italic text-muted-foreground leading-snug">"{currentComment}"</p>
+                   </div>
+                 )}
+              </div>
 
             {/* Promotion overlay */}
             {promotionData && (

@@ -30,6 +30,7 @@ export type Opening = {
   createdAt: number
   leadingSide: LeadingSide
   parentId?: string // For mittelspiels
+  studyMetadata?: StudyMetadata
 }
 
 export type Collection = {
@@ -48,7 +49,30 @@ export type Party = {
   pgn: string
   openingId: string
   createdAt: number
+  studyMetadata?: StudyMetadata
 }
+
+export type MarkerType = 'blunder' | 'brilliant' | 'great' | 'mistake' | 'inaccuracy' | 'deviation' | 'none';
+
+export type Marker = {
+  square: string;
+  type: MarkerType;
+};
+
+export type ArrowType = 'attack' | 'defense';
+
+export type Arrow = {
+  from: string;
+  to: string;
+  type: ArrowType;
+  points?: string[]; // for polyline arrows
+};
+
+export type StudyMetadata = {
+  markers: Record<number, Marker[]>; // ply index -> markers
+  arrows: Record<number, Arrow[]>;   // ply index -> arrows
+  comments: Record<number, string>; // ply index -> comment
+};
 
 export type ParsedPgn = {
   moves: string[] // SAN moves in order

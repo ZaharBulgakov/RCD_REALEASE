@@ -11,6 +11,7 @@ create table if not exists public.parties (
   name text not null,
   description text not null default '',
   pgn text not null,
+  study_metadata jsonb default null,
   created_at timestamptz not null default now()
 );
 

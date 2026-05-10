@@ -260,12 +260,16 @@ export function ClientApp() {
         await loadDeletionLogsFromDb(currentUser.id)
         // Only reset to home if user was previously logged out (not just auth refresh)
         // or if this is the initial load. Preserve all active states during tab switches.
-        if (!previousUser || screenRef.current.name === "home") {
+        const currentScreen = screenRef.current
+        const isActiveSession =
+          currentScreen.name === "study" ||
+          currentScreen.name === "game" ||
+          currentScreen.name === "results" ||
+          currentScreen.name === "detail" ||
+          currentScreen.name === "party"
+
+        if (!previousUser || (!isActiveSession && currentScreen.name === "home")) {
           setScreenSafe({ name: "home" })
-        }
-        // Additional protection: if we're in any active state (game, study, or edit), don't reset
-        else if (screenRef.current.name === "game" || screenRef.current.name === "study" || (editingOpening && addOpen)) {
-          // Preserve current state - don't reset
         }
       } else {
         setOpenings([])
@@ -300,7 +304,15 @@ supabase.auth
       setMounted(true)
       clearTimeout(fallbackTimer)
       return
-    }   // ← закрывает if (error...)
+    }
+    // Обработка нормального кейса — инициализируем состояние приложения
+    if (!alive) return
+    await applyAuthState(data?.session?.user ?? null).catch(() => {
+      if (!alive) return
+      setLoading(false)
+      setMounted(true)
+      clearTimeout(fallbackTimer)
+    })
   })
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -323,7 +335,7 @@ supabase.auth
   async function loadOpeningsFromDb(userId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from("openings")
-      .select("id, name, description, pgn, created_at, leading_side, parent_id")
+      .select("id, name, description, pgn, created_at, leading_side, parent_id, study_metadata")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
     if (error) {
@@ -344,6 +356,7 @@ supabase.auth
       createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
       leadingSide: (row.leading_side ?? "random") as import("@/lib/openings").LeadingSide,
       parentId: row.parent_id,
+      studyMetadata: row.study_metadata,
     }))
     // CRITICAL: fully replace local state with Supabase snapshot.
     setOpenings(mapped)
@@ -369,7 +382,8 @@ supabase.auth
       description: row.description || "",
       pgn: row.pgn,
       openingId: row.opening_id,
-      createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now()
+      createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+      studyMetadata: row.study_metadata,
     }))
     setParties(mapped)
     return true
@@ -442,6 +456,37 @@ supabase.auth
       return null
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleUpdateMetadata(id: string, metadata: import("@/lib/openings").StudyMetadata) {
+    if (!user) return
+    
+    // Determine if it's an opening or a party
+    const isOpening = openings.some(o => o.id === id)
+    const table = isOpening ? "openings" : "parties"
+
+    try {
+      const { error } = await supabase
+        .from(table)
+        .update({ study_metadata: metadata })
+        .eq("id", id)
+        .eq("user_id", user.id)
+
+      if (error) {
+        // Silently ignore network/fetch errors for metadata — not critical
+        console.warn("Metadata sync failed (will retry on next change):", error.message)
+        return
+      }
+
+      if (isOpening) {
+        setOpenings(prev => prev.map(o => o.id === id ? { ...o, studyMetadata: metadata } : o))
+      } else {
+        setParties(prev => prev.map(p => p.id === id ? { ...p, studyMetadata: metadata } : p))
+      }
+    } catch (err) {
+      // Network error (Failed to fetch) — ignore silently
+      console.warn("Metadata sync network error:", err)
     }
   }
 
@@ -1764,6 +1809,7 @@ const pool = availableOpenings.filter((o) => !newlyFinished.has(o.id) && !failed
         <StudyScreen 
           opening={screen.opening} 
           onExit={handleExit} 
+          onUpdateMetadata={handleUpdateMetadata}
           theme={currentTheme} 
           initialOrientation={screen.initialOrientation} 
           pgnFormat={pgnFormat}

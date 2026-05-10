@@ -1,7 +1,8 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useEffect, useRef, useState } from "react"
+// Тип из react-chessboard/dist/types — объявляем локально, т.к. пакет не экспортирует его напрямую
+type SquareRenderer = (args: { piece: { pieceType: string } | null; square: string; children?: React.ReactNode }) => React.JSX.Element
 
 // Загружаем один раз на уровне модуля — все карточки используют один chunk
 const Chessboard = dynamic(
@@ -25,32 +26,24 @@ type Props = {
     animationDurationInMs?: number
     onPieceDrop?: (args: { piece: any; sourceSquare: string; targetSquare: string | null }) => boolean
     onSquareClick?: (args: { piece: any; square: string }) => void
+    onSquareRightClick?: (args: { piece: any; square: string }) => void
+    onMouseOverSquare?: (args: { piece: any; square: string }) => void
+    onMouseOutSquare?: (args: { piece: any; square: string }) => void
+    squareStyles?: Record<string, React.CSSProperties>
+    arrows?: any[]
     [key: string]: any
   }
   orientation: "white" | "black"
   boardLight?: string
   boardDark?: string
+  squareRenderer?: SquareRenderer
+  /** @deprecated используй squareRenderer */
+  customSquare?: SquareRenderer
 }
 
-export function BoardWithCoords({ options, orientation, boardLight, boardDark }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [boardWidth, setBoardWidth] = useState<number>(0)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    // Сразу читаем размер — не ждём следующего тика
-    const initialWidth = el.getBoundingClientRect().width
-    if (initialWidth > 0) setBoardWidth(initialWidth)
-
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width
-      if (width) setBoardWidth(prev => width !== prev ? width : prev)
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+export function BoardWithCoords({ options, orientation, boardLight, boardDark, squareRenderer, customSquare }: Props) {
+  // customSquare — обратная совместимость со старым API
+  const resolvedSquareRenderer = squareRenderer ?? customSquare
 
   const ranks = orientation === "white" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8]
   const files = orientation === "white"
@@ -75,25 +68,27 @@ export function BoardWithCoords({ options, orientation, boardLight, boardDark }:
         {ranks.map((r) => <span key={`l-${r}`} className="text-right tabular-nums">{r}</span>)}
       </div>
 
-      <div ref={containerRef} className="min-w-0">
-        {boardWidth > 0 ? (
-          <Chessboard
-            key={orientation}
-            options={{
-              boardOrientation: orientation,
-              position: options?.position || "start",
-              showNotation: false,
-              boardStyle: { width: `${boardWidth}px`, height: `${boardWidth}px`, ...options?.boardStyle },
-              darkSquareStyle: { backgroundColor: boardDark ?? "var(--board-dark)" },
-              lightSquareStyle: { backgroundColor: boardLight ?? "var(--board-light)" },
-              onPieceDrop: options?.onPieceDrop,
-              allowDragging: options?.allowDragging !== false,
-              animationDurationInMs: options?.animationDurationInMs ?? 200,
-            }}
-          />
-        ) : (
-          <div className="w-full aspect-square bg-muted/20 rounded" />
-        )}
+      <div className="min-w-0">
+        <Chessboard
+          key={orientation}
+          options={{
+            boardOrientation: orientation,
+            position: options?.position ?? "start",
+            showNotation: false,
+            darkSquareStyle: { backgroundColor: boardDark ?? "var(--board-dark)" },
+            lightSquareStyle: { backgroundColor: boardLight ?? "var(--board-light)" },
+            onPieceDrop: options?.onPieceDrop,
+            onSquareClick: options?.onSquareClick,
+            onSquareRightClick: options?.onSquareRightClick,
+            onMouseOverSquare: options?.onMouseOverSquare,
+            onMouseOutSquare: options?.onMouseOutSquare,
+            squareStyles: options?.squareStyles,
+            arrows: options?.arrows,
+            squareRenderer: resolvedSquareRenderer,
+            allowDragging: options?.allowDragging !== false,
+            animationDurationInMs: options?.animationDurationInMs ?? 200,
+          }}
+        />
       </div>
 
       <div aria-hidden className="grid grid-rows-8 items-center justify-start pl-1 font-mono text-[11px] leading-none text-muted-foreground">

@@ -11,16 +11,31 @@ import {
   RefreshCw,
   BookOpen,
   Compass,
+  Tag,
+  MessageSquare,
+  MousePointer2,
+  Trash2,
+  Plus,
+  Pencil,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  Shield,
+  Zap,
 } from "lucide-react"
-import type { Opening } from "@/lib/openings"
+import type { Opening, StudyMetadata, MarkerType, Marker, Arrow, ArrowType } from "@/lib/openings"
 import { parsePgn } from "@/lib/openings"
 import { BoardWithCoords } from "./board-with-coords"
 import { ChessTheme } from "@/lib/themes"
 import { chessSounds } from "@/lib/sounds"
+import { Button } from "./ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip"
 
 type Props = {
   opening: Opening
   onExit: (fromStudyScreen?: boolean) => void
+  onUpdateMetadata?: (id: string, metadata: StudyMetadata) => Promise<void>
   theme: ChessTheme
   initialOrientation?: "white" | "black"
   pgnFormat?: "standard" | "short"
@@ -45,7 +60,7 @@ function fenAtPly(history: string[], ply: number): string {
   return c.fen()
 }
 
-export function StudyScreen({ opening, onExit, theme, initialOrientation = "white", pgnFormat = "standard" }: Props) {
+export function StudyScreen({ opening, onExit, onUpdateMetadata, theme, initialOrientation = "white", pgnFormat = "standard" }: Props) {
   const parsed = useMemo(() => parsePgn(opening.pgn), [opening.pgn])
 
   // Pre-populate history with the full theory line so forward arrow naturally
@@ -59,6 +74,42 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
     color: "w" | "b"
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // --- Study Tools States ---
+  const [markersMode, setMarkersMode] = useState(false)
+  const [studyMetadata, setStudyMetadata] = useState<StudyMetadata>(() => opening.studyMetadata || { markers: {}, arrows: {}, comments: {} })
+  const [activeMarkerMenu, setActiveMarkerMenu] = useState<{ square: string; x: number; y: number } | null>(null)
+  const [currentArrow, setCurrentArrow] = useState<{ from: string; type: ArrowType; to?: string; points: string[] } | null>(null)
+  const [hoverSquare, setHoverSquare] = useState<string | null>(null)
+  const [lastClickTime, setLastClickTime] = useState<number>(0)
+  const [showStudyTools, setShowStudyTools] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rcd_study_tools_visible") !== "false"
+    }
+    return true
+  })
+  const [editingComment, setEditingComment] = useState(false)
+  const [commentText, setCommentText] = useState("")
+  const isFirstRender = useRef(true)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rcd_study_tools_visible", String(showStudyTools))
+    }
+  }, [showStudyTools])
+
+  // Save metadata to DB with debounce, skip on first render (initialization)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    if (!onUpdateMetadata) return
+    const timer = setTimeout(() => {
+      onUpdateMetadata(opening.id, studyMetadata)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [studyMetadata, onUpdateMetadata, opening.id])
 
   // Clear error after some time
   useEffect(() => {
@@ -97,9 +148,155 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
   }, [history, cursor])
 
   const inBook = cursor <= bookPrefixLength
-  const diverged = bookPrefixLength < history.length
+  const diverged = history.length !== parsed.moves.length || bookPrefixLength < history.length
 
-  // --- Navigation ---------------------------------------------------------
+  // --- Study Tools Logic ---
+
+  const currentMarkers = useMemo(() => studyMetadata.markers[cursor] || [], [studyMetadata.markers, cursor])
+  const currentArrows = useMemo(() => studyMetadata.arrows[cursor] || [], [studyMetadata.arrows, cursor])
+  const currentComment = useMemo(() => studyMetadata.comments[cursor] || "", [studyMetadata.comments, cursor])
+
+  const markerColors: Record<MarkerType, string> = {
+    blunder: "rgba(239, 68, 68, 0.4)", // Red
+    brilliant: "rgba(20, 184, 166, 0.4)", // Turquoise
+    great: "rgba(59, 130, 246, 0.4)", // Blue
+    mistake: "rgba(249, 115, 22, 0.4)", // Orange
+    inaccuracy: "rgba(234, 179, 8, 0.4)", // Yellow
+    deviation: "rgba(168, 85, 247, 0.4)", // Purple
+    none: "transparent"
+  }
+
+  const markerIcons: Record<MarkerType, string> = {
+    blunder: "??",
+    brilliant: "!!",
+    great: "!",
+    mistake: "?",
+    inaccuracy: "!?",
+    deviation: "?",
+    none: ""
+  }
+
+  const handleSetMarker = (type: MarkerType) => {
+    if (!activeMarkerMenu) return
+    const square = activeMarkerMenu.square
+    
+    setStudyMetadata(prev => {
+      const markers = { ...prev.markers }
+      const plyMarkers = [...(markers[cursor] || [])].filter(m => m.square !== square)
+      
+      if (type !== "none") {
+        plyMarkers.push({ square, type })
+      }
+      
+      markers[cursor] = plyMarkers
+      return { ...prev, markers }
+    })
+    setActiveMarkerMenu(null)
+  }
+
+  const handleStartArrow = (type: ArrowType) => {
+    if (!activeMarkerMenu) return
+    setCurrentArrow({ from: activeMarkerMenu.square, type, points: [] })
+    setActiveMarkerMenu(null)
+  }
+
+  const handleSquareClick = (square: string) => {
+    if (!markersMode) return
+
+    const now = Date.now()
+    const isDoubleClick = now - lastClickTime < 300
+    setLastClickTime(now)
+
+    // If drawing arrow — single click on different square finishes it
+    if (currentArrow) {
+      if (square !== currentArrow.from) {
+        setStudyMetadata(prev => {
+          const arrows = { ...prev.arrows }
+          const plyArrows = [...(arrows[cursor] || [])]
+          // Avoid duplicate arrows
+          const exists = plyArrows.some(a => a.from === currentArrow.from && a.to === square && a.type === currentArrow.type)
+          if (!exists) {
+            plyArrows.push({ from: currentArrow.from, to: square, type: currentArrow.type, points: [] })
+          }
+          arrows[cursor] = plyArrows
+          return { ...prev, arrows }
+        })
+      }
+      setCurrentArrow(null)
+      return
+    }
+
+    // If click on existing arrow, allow deletion (simple: click near head or tail)
+    const existingArrowIndex = currentArrows.findIndex(a => a.to === square || a.from === square)
+    if (existingArrowIndex !== -1 && !activeMarkerMenu) {
+       // Optional: Show edit/delete menu for arrow. For now just toggle marker menu.
+    }
+
+    // Open menu
+    setActiveMarkerMenu({ square, x: 0, y: 0 })
+  }
+
+  const CustomSquare = useCallback(({ square, children }: any) => {
+    const marker = currentMarkers.find(m => m.square === square)
+    const bgColor = marker ? markerColors[marker.type] : "transparent"
+    const icon = marker ? markerIcons[marker.type] : ""
+
+    return (
+      <div 
+        style={{ position: "relative", width: "100%", height: "100%", backgroundColor: bgColor }}
+        onMouseDown={(e) => {
+          // react-chessboard onSquareClick is better, but we can catch it here too
+        }}
+      >
+        {children}
+        {icon && (
+          <div className="absolute top-0.5 right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-background/80 text-[10px] font-bold shadow-sm select-none">
+            {icon}
+          </div>
+        )}
+      </div>
+    )
+  }, [currentMarkers, markersMode, cursor, currentArrow])
+
+  // Highlight valid target squares when drawing an arrow
+  const arrowSquareStyles = useMemo(() => {
+    if (!currentArrow) return {}
+    const styles: Record<string, React.CSSProperties> = {}
+    // Highlight source square
+    styles[currentArrow.from] = { backgroundColor: currentArrow.type === "attack" ? "rgba(239, 68, 68, 0.3)" : "rgba(59, 130, 246, 0.3)", borderRadius: "4px" }
+    return styles
+  }, [currentArrow])
+
+  const boardArrows = useMemo(() => {
+     const arrows: any[] = []
+     
+     // Existing arrows from metadata — only straight arrows (library limitation)
+     currentArrows.forEach((a: any) => {
+       const color = a.type === "attack" ? "rgba(239, 68, 68, 0.6)" : "rgba(59, 130, 246, 0.6)"
+       const from = a.from.toLowerCase()
+       const to = a.to.toLowerCase()
+       if (from !== to) {
+         arrows.push({ startSquare: from, endSquare: to, color })
+       }
+     })
+     
+     // Preview arrow while drawing
+     if (currentArrow && hoverSquare && currentArrow.from.toLowerCase() !== hoverSquare.toLowerCase()) {
+       const color = currentArrow.type === "attack" ? "rgba(239, 68, 68, 0.4)" : "rgba(59, 130, 246, 0.4)"
+       arrows.push({ startSquare: currentArrow.from.toLowerCase(), endSquare: hoverSquare.toLowerCase(), color })
+     }
+     
+     // Deduplicate by startSquare+endSquare to avoid React key conflicts
+     const seen = new Set<string>()
+     return arrows.filter((a: any) => {
+       const key = a.startSquare + "-" + a.endSquare
+       if (seen.has(key)) return false
+       seen.add(key)
+       return true
+     })
+   }, [currentArrows, currentArrow, hoverSquare])
+
+  // --- Keyboard arrows ---
 
   const goTo = useCallback(
     (ply: number) => {
@@ -310,6 +507,7 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
   }, [parsed.moves])
 
   return (
+    <TooltipProvider delayDuration={0}>
     <div className="screen-in flex min-h-dvh flex-col bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/40 backdrop-blur-sm">
@@ -398,16 +596,112 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
                 orientation={orientation}
                 boardLight={theme.systemDesign?.boardLight}
                 boardDark={theme.systemDesign?.boardDark}
+                customSquare={CustomSquare}
                 options={{
                   id: `study-${opening.id}`,
                   position: fen,
                   onPieceDrop: handlePieceDrop,
+                  onSquareClick: ({ square }) => handleSquareClick(square),
+                  onMouseOverSquare: ({ square }) => setHoverSquare(square),
+                  onMouseOutSquare: () => setHoverSquare(null),
                   animationDurationInMs: 220,
                   showAnimations: true,
-                  allowDragging: !promotionData,
+                  allowDragging: !promotionData && !markersMode,
                   boardStyle: { width: "100%", height: "100%" },
+                  squareStyles: currentArrow ? arrowSquareStyles : {},
+                  arrows: boardArrows,
                 }}
               />
+
+              {/* Marker Menu Overlay */}
+              {activeMarkerMenu && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                  <div className="flex flex-col gap-2 rounded-2xl bg-card p-4 shadow-2xl border border-border pointer-events-auto animate-in fade-in zoom-in duration-200">
+                    <div className="flex items-center justify-between gap-4 mb-2 border-b border-border pb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Клетка {activeMarkerMenu.square}</span>
+                      <button onClick={() => setActiveMarkerMenu(null)} className="text-muted-foreground hover:text-foreground">
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { type: "brilliant", icon: "!!", color: "bg-teal-500", label: "Блестящий" },
+                        { type: "great", icon: "!", color: "bg-blue-500", label: "Замечательный" },
+                        { type: "inaccuracy", icon: "!?", color: "bg-yellow-500", label: "Неточность" },
+                        { type: "mistake", icon: "?", color: "bg-orange-500", label: "Ошибка" },
+                        { type: "blunder", icon: "??", color: "bg-red-500", label: "Зевок" },
+                        { type: "deviation", icon: "?", color: "bg-purple-500", label: "Отклонение" },
+                        { type: "none", icon: <Trash2 className="h-3 w-3" />, color: "bg-muted", label: "Очистить" },
+                      ].map((m) => (
+                        <Tooltip key={m.type}>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleSetMarker(m.type as MarkerType)}
+                              className={`flex h-10 w-10 items-center justify-center rounded-lg text-white font-black transition active:scale-95 ${m.color} hover:brightness-110 shadow-sm`}
+                            >
+                              {m.icon}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent><p className="text-[10px]">{m.label}</p></TooltipContent>
+                        </Tooltip>
+                      ))}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => handleStartArrow("attack")}
+                            className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 border border-red-500/40 text-red-500 transition active:scale-95 hover:bg-red-500/30"
+                          >
+                            <MousePointer2 className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent><p className="text-[10px]">Атака (красная)</p></TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => handleStartArrow("defense")}
+                            className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-500 transition active:scale-95 hover:bg-blue-500/30"
+                          >
+                            <Shield className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent><p className="text-[10px]">Защита (синяя)</p></TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => {
+                              setStudyMetadata(prev => {
+                                const arrows = { ...prev.arrows }
+                                const plyArrows = [...(arrows[cursor] || [])].filter(a => a.from !== activeMarkerMenu.square && a.to !== activeMarkerMenu.square)
+                                arrows[cursor] = plyArrows
+                                return { ...prev, arrows }
+                              })
+                              setActiveMarkerMenu(null)
+                            }}
+                            className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground transition active:scale-95 hover:bg-muted/80"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent><p className="text-[10px]">Удалить стрелки с этой клетки</p></TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Arrow Drawing Overlay */}
+              {currentArrow && (
+                <div className="absolute inset-0 z-40 pointer-events-none flex flex-col items-center justify-center">
+                   <div className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-lg animate-bounce">
+                     {currentArrow.type === "attack" ? "Рисование атаки..." : "Рисование защиты..."}
+                   </div>
+                   <div className="mt-2 rounded-lg bg-card/90 px-3 py-1.5 text-[10px] text-muted-foreground shadow-md backdrop-blur-sm">
+                     Кликни на любую клетку — стрелка будет поставлена
+                   </div>
+                </div>
+              )}
 
               {/* Promotion selection overlay */}
               {promotionData && (
@@ -454,38 +748,67 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
             {/* Controls row */}
             <div className="flex w-full max-w-[640px] flex-wrap items-center justify-center gap-2">
               <div className="inline-flex items-center rounded-full border border-border bg-card p-1">
-                <IconButton
-                  onClick={goStart}
-                  disabled={cursor === 0}
-                  label="В начало (Shift+←)"
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </IconButton>
-                <IconButton
-                  onClick={goBack}
-                  disabled={cursor === 0}
-                  label="Предыдущий ход (←)"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </IconButton>
-                <div className="mx-2 min-w-[7rem] text-center font-mono text-xs text-muted-foreground">
-                  {currentMoveLabel}
-                </div>
-                <IconButton
-                  onClick={goForward}
-                  disabled={cursor === history.length}
-                  label="Следующий ход (→)"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </IconButton>
-                <IconButton
-                  onClick={goEnd}
-                  disabled={cursor === history.length}
-                  label="В конец (Shift+→)"
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </IconButton>
+                {/* ... (existing nav buttons) ... */}
+                <IconButton onClick={goStart} disabled={cursor === 0} label="В начало (Shift+←)"><ChevronsLeft className="h-4 w-4" /></IconButton>
+                <IconButton onClick={goBack} disabled={cursor === 0} label="Предыдущий ход (←)"><ChevronLeft className="h-4 w-4" /></IconButton>
+                <div className="mx-2 min-w-[7rem] text-center font-mono text-xs text-muted-foreground">{currentMoveLabel}</div>
+                <IconButton onClick={goForward} disabled={cursor === history.length} label="Следующий ход (→)"><ChevronRight className="h-4 w-4" /></IconButton>
+                <IconButton onClick={goEnd} disabled={cursor === history.length} label="В конец (Shift+→)"><ChevronsRight className="h-4 w-4" /></IconButton>
               </div>
+
+              {/* Study Tools Toggles */}
+              <div className="flex items-center gap-2 ml-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        setMarkersMode(!markersMode)
+                        setActiveMarkerMenu(null)
+                        setCurrentArrow(null)
+                      }}
+                      className={`inline-flex h-9 px-3 items-center gap-2 rounded-full border border-border transition font-bold text-[10px] uppercase tracking-wider ${
+                        markersMode ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                      }`}
+                    >
+                      <Tag className="h-3.5 w-3.5" />
+                      {markersMode ? "Режим меток ВКЛ" : "Режим меток"}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent><p className="text-[10px]">В этом режиме нельзя двигать фигуры, только ставить метки и стрелки</p></TooltipContent>
+                </Tooltip>
+
+                <button
+                  type="button"
+                  onClick={() => setShowStudyTools(!showStudyTools)}
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-border transition ${
+                    showStudyTools ? "bg-primary/10 border-primary/40 text-primary" : "bg-card text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                  }`}
+                  title={showStudyTools ? "Скрыть инструменты" : "Показать инструменты"}
+                >
+                  <Compass className="h-4 w-4" />
+                </button>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-9 w-9 cursor-help items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition hover:border-primary/60 hover:text-foreground">
+                        <Info className="h-4 w-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs p-4">
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-wider text-primary">Инструкция по меткам</p>
+                        <ul className="list-disc pl-4 text-[10px] space-y-1 text-muted-foreground">
+                          <li>Включите <span className="text-foreground font-bold">Режим меток</span>, чтобы рисовать на доске.</li>
+                          <li><span className="text-foreground font-bold">Метки:</span> Кликните на клетку и выберите значок (!!, ?, ?? и т.д.).</li>
+                          <li><span className="text-foreground font-bold">Стрелки:</span> Выберите тип стрелки в меню клетки, затем кликни на целевую клетку.</li>
+                          <li><span className="text-foreground font-bold">Удалить стрелки:</span> В меню клетки нажмите на иконку корзины.</li>
+                          <li>Стрелки и метки привязаны к конкретному ходу.</li>
+                        </ul>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+              </div>
+
               <button
                 type="button"
                 onClick={flipBoard}
@@ -506,6 +829,73 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
                 </button>
               )}
             </div>
+
+            {/* Comment Section below controls */}
+            {showStudyTools && (
+              <div className="w-full max-w-[640px] mt-4 space-y-3">
+                <div className="flex items-center justify-between px-2">
+                   <div className="flex items-center gap-2">
+                     <MessageSquare className="h-4 w-4 text-primary" />
+                     <span className="text-xs font-bold uppercase tracking-wider">Комментарий к ходу</span>
+                   </div>
+                   <div className="flex gap-2">
+                     {currentComment ? (
+                       <>
+                         <button onClick={() => { setCommentText(currentComment); setEditingComment(true) }} className="text-[10px] font-bold text-muted-foreground hover:text-primary uppercase">Изменить</button>
+                         <button onClick={() => {
+                           setStudyMetadata(prev => {
+                             const comments = { ...prev.comments }
+                             delete comments[cursor]
+                             return { ...prev, comments }
+                           })
+                         }} className="text-[10px] font-bold text-muted-foreground hover:text-red-500 uppercase">Удалить</button>
+                       </>
+                     ) : (
+                       <button onClick={() => { setCommentText(""); setEditingComment(true) }} className="flex items-center gap-1 text-[10px] font-bold text-primary uppercase"><Plus className="h-3 w-3" /> Добавить</button>
+                     )}
+                   </div>
+                </div>
+
+                {editingComment ? (
+                  <div className="rounded-xl border border-primary/30 bg-card p-4 shadow-inner">
+                    <textarea
+                      autoFocus
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Введите описание хода или идеи..."
+                      className="w-full min-h-[100px] bg-transparent text-sm outline-none resize-none placeholder:text-muted-foreground/50"
+                    />
+                    <div className="flex justify-end gap-2 mt-2">
+                       <button onClick={() => setEditingComment(false)} className="px-3 py-1 text-[10px] font-bold uppercase text-muted-foreground hover:text-foreground transition">Отмена</button>
+                       <button 
+                         onClick={() => {
+                           setStudyMetadata(prev => {
+                             const comments = { ...prev.comments }
+                             comments[cursor] = commentText
+                             return { ...prev, comments }
+                           })
+                           setEditingComment(false)
+                         }}
+                         className="px-4 py-1 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase transition hover:brightness-110"
+                       >
+                         Сохранить
+                       </button>
+                    </div>
+                  </div>
+                ) : (
+                  currentComment ? (
+                    <div className="rounded-xl border border-border bg-card/50 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+                      <p className="text-sm leading-relaxed text-card-foreground italic">"{currentComment}"</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-border bg-card/20 p-6 flex flex-col items-center justify-center gap-2 opacity-50">
+                       <Info className="h-4 w-4 text-muted-foreground" />
+                       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Нет комментария для этого хода</p>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right: moves table */}
@@ -586,6 +976,7 @@ export function StudyScreen({ opening, onExit, theme, initialOrientation = "whit
         </button>
       </div>
     </div>
+    </TooltipProvider>
   )
 }
 
